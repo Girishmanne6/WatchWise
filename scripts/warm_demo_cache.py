@@ -21,6 +21,7 @@ DEMOS = [
 
 
 def main() -> None:
+    # The live demo stays on gpt-4o-mini. Gemma is only in the comparison.
     models = available_models(["gpt-4o-mini"])
     if not models:
         print("gpt-4o-mini is not configured, so the demo answers were not cached")

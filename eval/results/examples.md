@@ -1,6 +1,6 @@
 # No RAG vs RAG
 
-## Cloverfield (2008.0) - gemini-flash
+## Cloverfield (2008.0) - gemini-3.5-flash-lite
 
 Question: Is Cloverfield (2008) worth watching?
 

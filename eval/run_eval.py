@@ -77,15 +77,31 @@ def verdict_correct(predicted: str | None, score) -> bool | None:
     return False
 
 
-def _configs(models: list[str]) -> list[dict]:
+def _configs(models: list[str], extras: bool = True) -> list[dict]:
     configs = []
     for model in models:
         configs.append({"model": model, "mode": "no_rag", "retriever": "embed", "guard": True})
         configs.append({"model": model, "mode": "rag", "retriever": "embed", "guard": True})
+    if not extras:
+        return configs
     primary = "gpt-4o-mini" if "gpt-4o-mini" in models else models[0]
     configs.append({"model": primary, "mode": "rag", "retriever": "bm25", "guard": True})
     configs.append({"model": primary, "mode": "rag", "retriever": "embed", "guard": False})
     return configs
+
+
+def _limit_groups(items: list[dict], per_group: int) -> list[dict]:
+    """First N questions of each group, in test-set order. Same ids for every mode."""
+    if not per_group:
+        return items
+    counts: dict[str, int] = {}
+    kept = []
+    for item in items:
+        group = item["group"]
+        counts[group] = counts.get(group, 0) + 1
+        if counts[group] <= per_group:
+            kept.append(item)
+    return kept
 
 
 def _estimate(n_questions: int, configs: list[dict]) -> None:
@@ -288,24 +304,24 @@ def _figures(summary: pd.DataFrame, by_group: pd.DataFrame) -> None:
     summary = summary.copy()
     summary["label"] = summary.apply(_label, axis=1)
 
-    fig, ax = plt.subplots(figsize=(10, 5))
+    fig, ax = plt.subplots(figsize=(14, 6))
     plot = summary.dropna(subset=["verdict_accuracy"])
     ax.bar(plot["label"], plot["verdict_accuracy"], color="#1f4e79")
     ax.set_ylim(0, 1)
     ax.set_ylabel("Verdict accuracy")
     ax.set_title("Verdict accuracy by config")
-    ax.tick_params(axis="x", rotation=30)
+    ax.tick_params(axis="x", rotation=40, labelsize=8)
     fig.tight_layout()
     fig.savefig(figures / "accuracy_by_config.png", dpi=140)
     plt.close(fig)
 
-    fig, ax = plt.subplots(figsize=(10, 5))
+    fig, ax = plt.subplots(figsize=(14, 6))
     plot = summary.dropna(subset=["hallucination_rate"])
     ax.bar(plot["label"], plot["hallucination_rate"], color="#c4554a")
     ax.set_ylim(0, 1)
     ax.set_ylabel("Hallucination rate")
     ax.set_title("Hallucination rate by config")
-    ax.tick_params(axis="x", rotation=30)
+    ax.tick_params(axis="x", rotation=40, labelsize=8)
     fig.tight_layout()
     fig.savefig(figures / "hallucination_by_config.png", dpi=140)
     plt.close(fig)
@@ -494,6 +510,8 @@ def main() -> None:
     parser.add_argument("--yes", action="store_true", help="run without the confirmation prompt")
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--models", default="", help="comma-separated model keys, so other providers are not called")
+    parser.add_argument("--per-group", type=int, default=0, help="first N questions of each test group; 0 keeps all")
+    parser.add_argument("--no-extra", action="store_true", help="skip the BM25 and guard-off rows")
     parser.add_argument("--judge", default="", help="judge model key. Leave empty to skip judging.")
     parser.add_argument(
         "--rejudge-only",
@@ -536,7 +554,7 @@ def main() -> None:
     if not TESTSET.exists():
         print("missing eval/testset.json. Run eval/build_testset.py first.")
         sys.exit(1)
-    items = json.loads(TESTSET.read_text())
+    items = _limit_groups(json.loads(TESTSET.read_text()), args.per_group)
     if args.models:
         requested = [part.strip() for part in args.models.split(",") if part.strip()]
     else:
@@ -567,10 +585,15 @@ def main() -> None:
         except Exception as exc:  # noqa: BLE001
             print(f"judge {judge_key} failed: {type(exc).__name__}")
             sys.exit(1)
-    configs = _configs(models)
+    configs = _configs(models, extras=not args.no_extra)
     print("models:", ", ".join(models))
     print("judge:", judge_key or "(none)")
     _estimate(len(items), configs)
+    if judge_key:
+        prices = MODELS[judge_key]
+        calls = len(items) * len(configs)
+        unit = (1100 / 1e6) * prices["input_per_million"] + (120 / 1e6) * prices["output_per_million"]
+        print(f"judge {judge_key}: about ${unit * calls:.2f} for {calls} rubric calls at 1100 in / 120 out")
     if not args.yes:
         typed = input("Run the eval? [y/N] ").strip().lower()
         if typed != "y":

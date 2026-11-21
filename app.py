@@ -10,7 +10,6 @@ if str(ROOT) not in sys.path:
 import streamlit as st
 
 from src.assistant import answer
-from src.config import TEST_MODELS
 from src.llm import available_models
 
 DEMOS = [
@@ -36,7 +35,8 @@ def main() -> None:
     st.title("WatchWise")
     st.caption("A movie decision assistant for CMPE 259. It reads critic and audience reviews before it answers.")
 
-    models = available_models(TEST_MODELS)
+    # The demo stays on gpt-4o-mini. Gemma is only in the eval comparison.
+    models = available_models(["gpt-4o-mini"])
     with st.sidebar:
         st.header("Demo movies")
         st.write("These are the ones the warm-up script caches.")

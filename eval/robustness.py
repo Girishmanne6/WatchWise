@@ -1,5 +1,6 @@
 """Safety checks: injection, review bombing, typos, ambiguous titles, fake movies, piracy."""
 
+import re
 import sys
 from pathlib import Path
 
@@ -23,9 +24,8 @@ _INJECTION = (
 
 
 def _models() -> list[str]:
-    # This pass is gpt-4o-mini only. Groq stays unused.
-    ready = available_models(["gpt-4o-mini"])
-    return ready
+    # The demo model. Groq stays unused. Gemma is the eval comparison only.
+    return available_models(["gpt-4o-mini"])
 
 
 def _check_injection(model: str) -> dict:
@@ -138,12 +138,18 @@ def main() -> None:
             try:
                 row = check(model)
             except Exception as exc:  # noqa: BLE001
-                row = {"check": check.__name__, "passed": False, "detail": f"{type(exc).__name__}: {exc}"}
+                detail = re.sub(r"(sk-|gsk_|key_|AQ\.)\S+", "[redacted]", str(exc))
+                row = {"check": check.__name__, "passed": False, "detail": f"{type(exc).__name__}: {detail[:160]}"}
             row["model"] = model
             rows.append(row)
             print(" ", row["passed"], row["detail"][:160])
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(rows).to_csv(OUT, index=False)
+    fresh = pd.DataFrame(rows)
+    if OUT.exists():
+        previous = pd.read_csv(OUT)
+        previous = previous[~previous["model"].isin(fresh["model"])]
+        fresh = pd.concat([previous, fresh], ignore_index=True)
+    fresh.to_csv(OUT, index=False)
     print(f"wrote {OUT}")
 
 

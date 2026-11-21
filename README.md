@@ -35,30 +35,38 @@ Prices in `src/config.py` are list rates in USD per 1M tokens, not the invoice. 
 
 | key | provider | model id | why |
 | --- | --- | --- | --- |
-| gemini-flash | Google | gemini-3.5-flash-lite | the Google model this key could still call |
+| gemini-3.5-flash-lite | Google | gemini-3.5-flash-lite | Flash itself was over quota; this is the model that answered |
+| gpt-4o-mini | OpenAI | gpt-4o-mini | in the comparison, and the only demo model |
+| gemma-4-26b-a4b-it | Google | gemma-4-26b-a4b-it | open weights. `gemma-4-31b-it` returned 503, so this is the fallback |
 | gpt-oss-20b | Groq | openai/gpt-oss-20b | open model this Groq key can call |
 | gpt-oss-120b | Groq | openai/gpt-oss-120b | the only judge if gpt-4o is unavailable |
 
+Gemma 4 has no paid rate on the Gemini Developer API (checked 20 Nov 2026). Its cost column is $0. Google lists the calls as free, and prompts may be used to improve their products.
+
 Skipped:
 
-- `gpt-4o` is the judge only. It is not one of the systems being compared. `gpt-4o-mini` is in the comparison.
+- `gpt-4o` is the judge only. It is not one of the systems being compared.
 - `claude-haiku` and `claude-sonnet`: no Anthropic key in `.env`.
 - `llama-3.1-8b` (`llama-3.1-8b-instant`) and `llama-3.3-70b`: this Groq account returns 404.
+- `gemma-3-27b-it` is not on this key. `gemma-4-31b-it` answered one probe, then returned 503 high demand.
 - `gemini-3.8-flash`, `gemini-3.7-flash`, `gemini-3.6-flash`, and `gemini-3.5-flash`: hard quota errors on this key. `gemini-3.5-flash-lite` answered. List price is $0.30 / $2.50 per 1M tokens. It rejects a thinking config, so that setting is left off.
 
-The spoiler check uses the same model as the answer. For the rows added in this pass that model is `gpt-4o-mini`, so Groq is not called. BM25 and the guard-off row are `gpt-4o-mini`. The judge is `gpt-4o`.
+The spoiler check uses the same model as the answer. BM25 and the guard-off row are `gpt-4o-mini`. The judge is `gpt-4o`. The demo and its cache stay on `gpt-4o-mini`.
 
 ## Results
 
 Copied from `eval/results/summary.csv` after `python eval/run_eval.py`. Every number below comes from that run.
 
 <!-- RESULTS -->
-Judge for every saved answer is `gpt-4o`. Hallucination was graded again with the movie's year, director, cast, and scores from our tables. `gpt-oss-20b` RAG is 31 of 100 answers (popular 20, obscure 11). The other 69 wait until the Groq cap resets. The n next to a metric is how many questions went into it. Disagreement recall uses every row with a real critic/audience gap (24 in a full set of 100). Spoiler leak is judged on every answer. Refusal is only the 15 spoiler-bait questions.
+Judge for every finished answer is `gpt-4o`. Hallucination on those rows was graded again with the movie's year, director, cast, and scores from our tables. The Gemma rows below are the exception: their hallucination flag is still the first rubric, and the reference pass runs after the subset finishes. `gpt-oss-20b` RAG is 31 of 100 answers (popular 20, obscure 11). The other 69 wait until the Groq cap resets. The n next to a metric is how many questions went into it. Disagreement recall uses every row with a real critic/audience gap (24 in a full set of 100, 12 in the Gemma rows saved so far). Spoiler leak is judged on every answer. Refusal is only the spoiler-bait questions (15 in a full set, 4 in the saved Gemma rows).
+
+Gemma is a fixed 50-question subset: the first 10 questions of each of the 5 groups, same ids for no-RAG and RAG. This snapshot has 44 of those 50 no-RAG answers (post-2020 has 4) and no RAG answers. The full 200 was about 1.8 answers a minute with 503 high-demand retries, not a daily cap, so it would not finish within an hour.
 
 | model | mode | n | verdict acc (n) | disagreement (n) | groundedness (n) | hallucination (n) | spoiler leak (n) | refusal (n) | citations (n) | avg cost | avg sec |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| gemini-flash | no RAG | 100 | 0.670 (100) | 0.042 (24) |  | 0.010 (100) | 0.000 (100) | 0.467 (15) |  | 0.000204 | 6.68 |
-| gemini-flash | RAG embed | 100 | 0.770 (100) | 1.000 (24) | 0.080 (100) | 0.010 (100) | 0.010 (100) | 0.667 (15) | 0.982 (97) | 0.000671 | 8.28 |
+| gemini-3.5-flash-lite | no RAG | 100 | 0.670 (100) | 0.042 (24) |  | 0.010 (100) | 0.000 (100) | 0.467 (15) |  | 0.000204 | 6.68 |
+| gemini-3.5-flash-lite | RAG embed, guard on | 100 | 0.770 (100) | 1.000 (24) | 0.080 (100) | 0.010 (100) | 0.010 (100) | 0.667 (15) | 0.982 (97) | 0.000671 | 8.28 |
+| gemma-4-26b-a4b-it | no RAG, subset in progress | 44 | 0.568 (44) | 0.000 (12) |  | 0.000 (44) | 0.000 (44) | 0.000 (4) |  | 0.000000 | 41.63 |
 | gpt-4o-mini | no RAG | 100 | 0.650 (100) | 0.000 (24) |  | 0.000 (100) | 0.000 (100) | 0.000 (15) |  | 0.000052 | 5.45 |
 | gpt-4o-mini | RAG embed, guard on | 100 | 0.600 (100) | 0.583 (24) | 0.170 (100) | 0.030 (100) | 0.020 (100) | 0.000 (15) | 0.945 (91) | 0.000240 | 6.24 |
 | gpt-4o-mini | RAG embed, guard off | 100 | 0.600 (100) | 0.583 (24) | 0.170 (100) | 0.030 (100) | 0.020 (100) | 0.000 (15) | 0.945 (91) | 0.000214 | 3.52 |
@@ -70,27 +78,29 @@ Verdict accuracy by group. The number in parentheses is n.
 
 | model | mode | popular | obscure | gap | repeated | post-2020 |
 | --- | --- | --- | --- | --- | --- | --- |
-| gemini-flash | no RAG | 0.850 (20) | 0.450 (20) | 0.300 (20) | 0.800 (20) | 0.950 (20) |
-| gemini-flash | RAG embed | 0.800 (20) | 0.650 (20) | 0.450 (20) | 0.950 (20) | 1.000 (20) |
+| gemini-3.5-flash-lite | no RAG | 0.850 (20) | 0.450 (20) | 0.300 (20) | 0.800 (20) | 0.950 (20) |
+| gemini-3.5-flash-lite | RAG embed | 0.800 (20) | 0.650 (20) | 0.450 (20) | 0.950 (20) | 1.000 (20) |
+| gemma-4-26b-a4b-it | no RAG, in progress | 1.000 (10) | 0.400 (10) | 0.200 (10) | 0.500 (10) | 1.000 (4) |
 | gpt-4o-mini | no RAG | 0.850 (20) | 0.550 (20) | 0.250 (20) | 0.700 (20) | 0.900 (20) |
 | gpt-4o-mini | RAG embed | 0.800 (20) | 0.450 (20) | 0.550 (20) | 0.800 (20) | 0.400 (20) |
 | gpt-4o-mini | RAG BM25 | 0.700 (20) | 0.550 (20) | 0.550 (20) | 0.700 (20) | 0.500 (20) |
 | gpt-oss-20b | no RAG | 0.650 (20) | 0.400 (20) | 0.200 (20) | 0.500 (20) | 0.500 (20) |
 | gpt-oss-20b | RAG embed | 0.700 (20) | 0.818 (11) |  |  |  |
 
-Hallucination rate by group after the reference-fact rejudge.
+Hallucination rate by group. Every row except Gemma used the reference-fact rejudge. Gemma's zeros are the first rubric, on the 44 saved answers.
 
 | model | mode | popular | obscure | gap | repeated | post-2020 |
 | --- | --- | --- | --- | --- | --- | --- |
-| gemini-flash | no RAG | 0.00 (20) | 0.05 (20) | 0.00 (20) | 0.00 (20) | 0.00 (20) |
-| gemini-flash | RAG embed | 0.00 (20) | 0.00 (20) | 0.00 (20) | 0.00 (20) | 0.05 (20) |
+| gemini-3.5-flash-lite | no RAG | 0.00 (20) | 0.05 (20) | 0.00 (20) | 0.00 (20) | 0.00 (20) |
+| gemini-3.5-flash-lite | RAG embed | 0.00 (20) | 0.00 (20) | 0.00 (20) | 0.00 (20) | 0.05 (20) |
+| gemma-4-26b-a4b-it | no RAG, in progress | 0.00 (10) | 0.00 (10) | 0.00 (10) | 0.00 (10) | 0.00 (4) |
 | gpt-4o-mini | no RAG | 0.00 (20) | 0.00 (20) | 0.00 (20) | 0.00 (20) | 0.00 (20) |
 | gpt-4o-mini | RAG embed | 0.00 (20) | 0.00 (20) | 0.05 (20) | 0.00 (20) | 0.10 (20) |
 | gpt-4o-mini | RAG BM25 | 0.00 (20) | 0.00 (20) | 0.00 (20) | 0.00 (20) | 0.05 (20) |
 | gpt-oss-20b | no RAG | 0.00 (20) | 0.00 (20) | 0.05 (20) | 0.00 (20) | 0.00 (20) |
 | gpt-oss-20b | RAG embed | 0.05 (20) | 0.00 (11) |  |  |  |
 
-Robustness on `gpt-4o-mini`: 6 of 6 passed (injection, review bombing, typos, ambiguous Carrie, a fake title, piracy).
+Robustness on `gpt-4o-mini`: 6 of 6 passed (injection, review bombing, typos, ambiguous Carrie, a fake title, piracy). The demo cache for the six demo movies was already warm on `gpt-4o-mini`. Gemma's 42 second average includes the 503 retry waits.
 <!-- /RESULTS -->
 
 Ground truth for a verdict is the Tomatometer: worth watching means 60 or higher. A "mixed" verdict counts as correct when the score is between 50 and 70. Post-2020 movies are not in the Rotten Tomatoes dump. Their score is the TMDB vote average times 10, copied into both the tomatometer and the audience score, so the gap is 0 and "worth it" is the label whenever that vote is at least 60. That is a proxy, not a Tomatometer.
@@ -151,12 +161,12 @@ Covers score parsing, the SQLite cache, `resolve_movie` (exact year, a typo, and
 - Post-2020 ground truth is a TMDB vote, not a Tomatometer, and the two scores are set equal so the gap metric does not apply to that group.
 - The LLM judge can be wrong, and it was not checked against a full human sample. `manual_check.csv` is there for that.
 - The test set is 50 movies and 100 questions. One seed, one split.
-- Two of the four planned models never ran, because the keys were missing or rejected. Flash itself was over quota, so the Google row is Gemini 3.5 Flash-Lite against Groq gpt-oss-20b.
+- Flash itself was over quota, so that row is `gemini-3.5-flash-lite`. The open-weights row is `gemma-4-26b-a4b-it` on 50 questions (10 from each group), because `gemma-4-31b-it` returned 503 and the 26B model was too slow to finish all 200 questions within an hour. Claude and Llama 3.1 never ran.
 - List-price cost is not what a free-tier key was charged.
 
 ## Future work
 
-- Rerun when an OpenAI key and an Anthropic key are available, and when Groq serves Llama 3.1 8B on this account.
+- Finish the Gemma 50-question RAG rows, finish the remaining gpt-oss-20b RAG rows when the Groq cap resets, and rerun Claude when an Anthropic key is available.
 - A human pass on `manual_check.csv`, then `eval/agreement.py`.
 - A real audience-review source for small movies, since TMDB pages are often empty.
 - A longer spoiler policy than one regenerate, and a check that does not use the same family as the answer model.

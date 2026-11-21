@@ -23,6 +23,9 @@ _PROVIDER_LIMITS = {
 # Per model when one Groq model is capped and another is not.
 _MIN_INTERVAL = {
     "google": 4.0,
+    # Gemma 4 returns 503 when calls land close together.
+    "gemma-4-26b-a4b-it": 8.0,
+    "gemma-4-31b-it": 8.0,
     "openai/gpt-oss-20b": 4.5,
     "openai/gpt-oss-120b": 8.0,
     "qwen/qwen3.8-27b": 0.4,
@@ -145,17 +148,19 @@ def _is_daily_limit(exc: Exception) -> bool:
 def _retry(fn):
     delay = 3.0
     last = None
-    for attempt in range(5):
+    for attempt in range(8):
         try:
             return fn()
         except Exception as exc:  # noqa: BLE001 - providers raise their own types
             last = exc
-            if _is_daily_limit(exc) or not _is_retryable(exc) or attempt == 4:
+            if _is_daily_limit(exc) or not _is_retryable(exc) or attempt == 7:
                 raise
             wait = delay
             hinted = _retry_after_seconds(exc)
             if hinted is not None:
                 wait = max(wait, hinted + 0.5)
+            if "high demand" in str(exc).lower() or "unavailable" in str(exc).lower():
+                wait = max(wait, 8.0)
             logger.warning(
                 "retryable API error (%s), sleeping %.0fs before retry %s",
                 type(exc).__name__,
@@ -163,7 +168,7 @@ def _retry(fn):
                 attempt + 1,
             )
             time.sleep(wait)
-            delay *= 2
+            delay = min(delay * 2, 30)
     raise last
 
 
@@ -233,7 +238,8 @@ def _gemini(spec: dict, system: str, user: str, temperature: float) -> dict:
 
     client = genai.Client(
         api_key=os.environ[spec["env"]],
-        http_options=types.HttpOptions(timeout=60_000),
+        # A long Gemma prompt can sit past the default client timeout.
+        http_options=types.HttpOptions(timeout=120_000),
     )
     config_kwargs = {"temperature": temperature}
     if system:
