@@ -7,3 +7,12 @@ requests
 python-dotenv
 jupyter
 pytest
+openai
+anthropic
+google-genai
+groq
+sentence-transformers
+rapidfuzz
+rank_bm25
+streamlit
+torch
