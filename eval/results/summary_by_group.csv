@@ -12,7 +12,7 @@ n,n_verdict,verdict_accuracy,n_disagreement,disagreement_recall,n_groundedness,g
 10,10,0.2,10,0.0,0,,10,0.0,10,0.0,1,0.0,0,,0.0,46.9887,0,gemma-4-26b-a4b-it,no_rag,embed,True,gap
 10,10,0.4,2,0.0,0,,10,0.0,10,0.0,1,0.0,0,,0.0,22.4769,0,gemma-4-26b-a4b-it,no_rag,embed,True,obscure
 10,10,1.0,0,,0,,10,0.0,10,0.0,1,0.0,0,,0.0,49.7371,0,gemma-4-26b-a4b-it,no_rag,embed,True,popular
-4,4,1.0,0,,0,,4,0.0,4,0.0,0,,0,,0.0,34.747749999999996,0,gemma-4-26b-a4b-it,no_rag,embed,True,post-2020
+5,5,1.0,0,,0,,5,0.0,5,0.0,0,,0,,0.0,46.233,0,gemma-4-26b-a4b-it,no_rag,embed,True,post-2020
 10,10,0.5,0,,0,,10,0.0,10,0.0,1,0.0,0,,0.0,50.07,0,gemma-4-26b-a4b-it,no_rag,embed,True,repeated
 20,20,0.25,20,0.0,0,,20,0.0,20,0.0,3,0.0,0,,5.1400000000000016e-05,5.587350000000001,0,gpt-4o-mini,no_rag,embed,True,gap
 20,20,0.55,4,0.0,0,,20,0.0,20,0.0,3,0.0,0,,5.3049999999999995e-05,5.623249999999999,0,gpt-4o-mini,no_rag,embed,True,obscure
