@@ -52,6 +52,32 @@ def _parse(text: str) -> dict:
         return json.loads(match.group(0))
 
 
+_HALLUCINATION = """You check one movie answer for invented facts.
+Reply with JSON only: {"hallucination": false}
+The reference is ground truth from our tables.
+hallucination is true if the answer gives a year, director, actor, or score that contradicts the reference, or names a director or cast member who is not listed.
+A score within 1 point of the reference is not a contradiction.
+If directors or cast says "not in our tables", do not treat a person's name as a hallucination.
+A plot claim is a hallucination only when it contradicts the dataset blurb. Refusing to spoil the plot is not a hallucination.
+If you are unsure, answer false.
+"""
+
+
+def judge_hallucination(question: str, answer: str, facts: dict, judge_key: str) -> dict:
+    """One hallucination label, using year, director, cast, and scores as the reference."""
+    user = f"Question: {question}\n\nReference:\n{json.dumps(facts, default=str)}\n\nAnswer:\n{answer}"
+    result = generate(judge_key, _HALLUCINATION, user, temperature=0)
+    parsed = _parse(result["text"])
+    return {
+        "hallucination": bool(parsed.get("hallucination")),
+        "_input_tokens": result["input_tokens"],
+        "_output_tokens": result["output_tokens"],
+        "_cost_usd": result["cost_usd"],
+        "_latency_s": result["latency_s"],
+        "_judge": judge_key,
+    }
+
+
 def judge_answer(question: str, answer: str, reviews: list[dict], stats: dict, judge_key: str) -> dict:
     review_lines = []
     for review in reviews or []:

@@ -151,6 +151,19 @@ class TMDBClient:
         """Return the TMDB movie details object."""
         return self._get(f"/3/movie/{tmdb_id}")
 
+    def get_credits(self, tmdb_id: int) -> dict:
+        """Return director names and the first billed cast names."""
+        payload = self._get(f"/3/movie/{tmdb_id}/credits")
+        directors = []
+        for person in payload.get("crew") or []:
+            if person.get("job") == "Director" and person.get("name"):
+                directors.append(person["name"])
+        cast = []
+        for person in (payload.get("cast") or [])[:12]:
+            if person.get("name"):
+                cast.append(person["name"])
+        return {"directors": directors, "cast": cast}
+
     def get_reviews(self, tmdb_id: int, max_pages: int = 3) -> list[dict]:
         """Return audience reviews as author, content, rating, and created_at."""
         reviews: list[dict] = []

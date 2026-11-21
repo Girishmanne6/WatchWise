@@ -8,7 +8,6 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from src.assistant import answer  # noqa: E402
-from src.config import TEST_MODELS  # noqa: E402
 from src.llm import available_models  # noqa: E402
 
 DEMOS = [
@@ -22,11 +21,11 @@ DEMOS = [
 
 
 def main() -> None:
-    models = available_models(TEST_MODELS)
+    models = available_models(["gpt-4o-mini"])
     if not models:
-        print("no model keys are set, so the demo answers were not cached")
+        print("gpt-4o-mini is not configured, so the demo answers were not cached")
         return
-    model = "gpt-4o-mini" if "gpt-4o-mini" in models else models[0]
+    model = "gpt-4o-mini"
     print("warming with", model)
     for title, year in DEMOS:
         question = f"Is {title} ({year}) worth watching?"

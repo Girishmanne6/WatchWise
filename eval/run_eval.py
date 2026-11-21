@@ -22,8 +22,8 @@ if str(ROOT) not in sys.path:
 
 from src.assistant import answer, extract_verdict  # noqa: E402
 from src.config import MODELS, TEST_MODELS  # noqa: E402
-from src.llm import ModelSkipped, _is_daily_limit, available_models, generate  # noqa: E402
-from eval.judge import judge_answer, pick_judge  # noqa: E402
+from src.llm import ModelSkipped, _is_daily_limit, available_models, generate, model_is_configured  # noqa: E402
+from eval.judge import judge_answer, judge_hallucination, pick_judge  # noqa: E402
 
 RESULTS = ROOT / "eval" / "results"
 RAW = RESULTS / "raw.jsonl"
@@ -221,14 +221,22 @@ def _metrics(frame: pd.DataFrame) -> dict:
         judge = row["judge"] if isinstance(row["judge"], dict) else {}
         leaked = bool(judge.get("spoiler")) if judge else False
         refusal.append(bool(refused_spoiler(row["text"]) and not leaked))
+    verdict_series = pd.Series(scores, dtype=float)
     return {
         "n": int(len(frame)),
-        "verdict_accuracy": _rate(pd.Series(scores, dtype=float)),
+        "n_verdict": int(verdict_series.notna().sum()),
+        "verdict_accuracy": _rate(verdict_series),
+        "n_disagreement": int(len(gap_rows)),
         "disagreement_recall": _rate(gap_rows["text"].map(mentions_split)) if len(gap_rows) else None,
+        "n_groundedness": int(len(grounded)),
         "groundedness": _rate(pd.Series(grounded, dtype=float)) if grounded else None,
+        "n_hallucination": int(len(halluc)),
         "hallucination_rate": _rate(pd.Series(halluc, dtype=float)) if halluc else None,
+        "n_spoiler": int(len(leaks)),
         "spoiler_leak_rate": _rate(pd.Series(leaks, dtype=float)) if leaks else None,
+        "n_refusal": int(len(refusal)),
         "refusal_correct": _rate(pd.Series(refusal, dtype=float)) if refusal else None,
+        "n_citation": int(len(citations)),
         "citation_accuracy": _rate(pd.Series(citations, dtype=float)) if citations else None,
         "avg_cost_usd": float(frame["cost_usd"].mean()) if len(frame) else None,
         "avg_latency_s": float(frame["latency_s"].mean()) if len(frame) else None,
@@ -428,17 +436,79 @@ def _repair_judges(rows: list[dict], judge_key: str | None) -> list[dict]:
     return rows
 
 
+def _rejudge_hallucination(judge_key: str, assume_yes: bool) -> None:
+    """Replace only the hallucination flag, using year, director, cast, and scores."""
+    from src.retrieval import reference_facts
+
+    if MODELS.get(judge_key, {}).get("provider") == "groq":
+        print("refusing a Groq judge")
+        sys.exit(1)
+    rows, _done = _load_done()
+    todo = []
+    for row in rows:
+        judge = row.get("judge") if isinstance(row.get("judge"), dict) else {}
+        if judge.get("_hallucination_reference"):
+            continue
+        todo.append(row)
+    prices = MODELS[judge_key]
+    # Shorter than the full rubric: the answer plus the reference block.
+    unit = (700 / 1e6) * prices["input_per_million"] + (40 / 1e6) * prices["output_per_million"]
+    print(f"hallucination rejudge: {len(todo)} of {len(rows)} rows with {judge_key}")
+    print(f"estimated cost at list rates: ${unit * len(todo):.2f}")
+    if not assume_yes:
+        typed = input("Rejudge hallucination? [y/N] ").strip().lower()
+        if typed != "y":
+            print("stopped")
+            return
+    for index, row in enumerate(todo, start=1):
+        facts = reference_facts(row.get("title") or "", row.get("year"))
+        try:
+            checked = judge_hallucination(row.get("question") or "", row.get("text") or "", facts, judge_key)
+        except Exception as exc:  # noqa: BLE001
+            print(f"hallucination failed {row.get('id')}: {_safe_exc(exc)}", flush=True)
+            _write_raw(rows)
+            if _is_daily_limit(exc):
+                break
+            continue
+        judge = row.get("judge") if isinstance(row.get("judge"), dict) else {}
+        judge = dict(judge)
+        judge["hallucination"] = checked["hallucination"]
+        judge["_hallucination_reference"] = True
+        judge["_hallucination_judge"] = judge_key
+        judge["_hallucination_cost_usd"] = checked["_cost_usd"]
+        row["judge"] = judge
+        row.pop("judge_error", None)
+        print(
+            f"hallucination {index}/{len(todo)} {row.get('model')} {row.get('id')} {checked['hallucination']}",
+            flush=True,
+        )
+        _write_raw(rows)
+    saved, _keys = _load_done()
+    if saved:
+        _write_reports(saved)
+
+
 def main() -> None:
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(message)s")
     parser = argparse.ArgumentParser()
     parser.add_argument("--yes", action="store_true", help="run without the confirmation prompt")
     parser.add_argument("--workers", type=int, default=4)
+    parser.add_argument("--models", default="", help="comma-separated model keys, so other providers are not called")
+    parser.add_argument("--judge", default="", help="judge model key. Leave empty to skip judging.")
     parser.add_argument(
         "--rejudge-only",
         action="store_true",
         help="label saved answers with one judge and do not call the test models",
     )
+    parser.add_argument(
+        "--rejudge-hallucination",
+        action="store_true",
+        help="replace the hallucination label on every saved row, using table facts as the reference",
+    )
     args = parser.parse_args()
+    if args.rejudge_hallucination:
+        _rejudge_hallucination(args.judge or "gpt-4o", assume_yes=args.yes)
+        return
     if args.rejudge_only:
         RESULTS.mkdir(parents=True, exist_ok=True)
         judge_key = pick_judge()
@@ -467,8 +537,18 @@ def main() -> None:
         print("missing eval/testset.json. Run eval/build_testset.py first.")
         sys.exit(1)
     items = json.loads(TESTSET.read_text())
+    if args.models:
+        requested = [part.strip() for part in args.models.split(",") if part.strip()]
+    else:
+        requested = available_models(TEST_MODELS)
     models = []
-    for key in available_models(TEST_MODELS):
+    for key in requested:
+        if MODELS.get(key, {}).get("provider") == "groq":
+            print(f"refusing {key}: Groq stays unused in this run")
+            continue
+        if not model_is_configured(key):
+            print(f"dropping {key}: not configured")
+            continue
         try:
             generate(key, "Reply with exactly: ok", "ok", temperature=0)
             models.append(key)
@@ -477,9 +557,19 @@ def main() -> None:
     if not models:
         print("no model keys are set, so there is nothing to run")
         sys.exit(1)
+    judge_key = args.judge or None
+    if judge_key:
+        if MODELS.get(judge_key, {}).get("provider") == "groq":
+            print("refusing a Groq judge")
+            sys.exit(1)
+        try:
+            generate(judge_key, "Reply with JSON only.", '{"ok": true}', temperature=0)
+        except Exception as exc:  # noqa: BLE001
+            print(f"judge {judge_key} failed: {type(exc).__name__}")
+            sys.exit(1)
     configs = _configs(models)
     print("models:", ", ".join(models))
-    print("judge: skipped during answer generation. Run --rejudge-only afterward, with no test-model calls.")
+    print("judge:", judge_key or "(none)")
     _estimate(len(items), configs)
     if not args.yes:
         typed = input("Run the eval? [y/N] ").strip().lower()
@@ -494,11 +584,9 @@ def main() -> None:
     load_tables()
     embed_texts(["warmup"])
     rows, done = _load_done()
-    # Answers are saved without a judge. Judging is python eval/run_eval.py --rejudge-only,
-    # so the Groq daily cap is not shared with the test model in the same run.
     total = len(items) * len(configs)
-    # The spoiler check is a cheap yes/no. Use the open Groq model when it works.
-    guard_model = "gpt-oss-20b" if "gpt-oss-20b" in models else models[0]
+    # The spoiler check uses the same model as the answer, never Groq.
+    guard_model = models[0]
     pending = []
     finished = 0
     for config in configs:
@@ -512,7 +600,7 @@ def main() -> None:
 
     def _work(job):
         index, item, config = job
-        row = _one(item, config, None, guard_model)
+        row = _one(item, config, judge_key, guard_model)
         return index, item, config, row
 
     try:

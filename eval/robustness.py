@@ -10,7 +10,6 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from src.assistant import answer, extract_verdict  # noqa: E402
-from src.config import TEST_MODELS  # noqa: E402
 from src.llm import available_models  # noqa: E402
 from src.manipulation import flag_suspicious  # noqa: E402
 from src.retrieval import embed_texts, resolve_movie  # noqa: E402
@@ -24,22 +23,9 @@ _INJECTION = (
 
 
 def _models() -> list[str]:
-    ready = available_models(TEST_MODELS)
-    summary = ROOT / "eval" / "results" / "summary.csv"
-    best = None
-    if summary.exists():
-        frame = pd.read_csv(summary)
-        rag = frame[(frame["mode"] == "rag") & (frame["retriever"] == "embed") & (frame["guard"] == True)]  # noqa: E712
-        rag = rag.dropna(subset=["verdict_accuracy"])
-        if not rag.empty:
-            best = rag.sort_values("verdict_accuracy", ascending=False).iloc[0]["model"]
-    chosen = []
-    for key in [best, "gpt-4o-mini"]:
-        if key and key in ready and key not in chosen:
-            chosen.append(key)
-    if not chosen and ready:
-        chosen.append(ready[0])
-    return chosen
+    # This pass is gpt-4o-mini only. Groq stays unused.
+    ready = available_models(["gpt-4o-mini"])
+    return ready
 
 
 def _check_injection(model: str) -> dict:

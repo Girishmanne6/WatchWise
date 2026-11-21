@@ -41,26 +41,56 @@ Prices in `src/config.py` are list rates in USD per 1M tokens, not the invoice. 
 
 Skipped:
 
-- `gpt-4o-mini`: not in this run. `gpt-4o` is the judge only, not one of the systems being compared.
+- `gpt-4o` is the judge only. It is not one of the systems being compared. `gpt-4o-mini` is in the comparison.
 - `claude-haiku` and `claude-sonnet`: no Anthropic key in `.env`.
 - `llama-3.1-8b` (`llama-3.1-8b-instant`) and `llama-3.3-70b`: this Groq account returns 404.
 - `gemini-3.8-flash`, `gemini-3.7-flash`, `gemini-3.6-flash`, and `gemini-3.5-flash`: hard quota errors on this key. `gemini-3.5-flash-lite` answered. List price is $0.30 / $2.50 per 1M tokens. It rejects a thinking config, so that setting is left off.
 
-The spoiler check uses `gpt-oss-20b` during the eval so that check stays on the cheap model. The retriever comparison (BM25 vs embeddings) and the guard-off row are on `gemini-flash`, because `gpt-4o-mini` never started.
+The spoiler check uses the same model as the answer. For the rows added in this pass that model is `gpt-4o-mini`, so Groq is not called. BM25 and the guard-off row are `gpt-4o-mini`. The judge is `gpt-4o`.
 
 ## Results
 
 Copied from `eval/results/summary.csv` after `python eval/run_eval.py`. Every number below comes from that run.
 
 <!-- RESULTS -->
-Partial. 331 of 600 answers are saved. Every one of those 331 was graded by `gpt-4o` and no other judge. The list-price estimate before the judging pass was $1.31. The token bill recorded on the rows is $0.635. BM25, the guard-off row, and 69 of the `gpt-oss-20b` RAG answers are not in this table yet.
+Judge for every saved answer is `gpt-4o`. Hallucination was graded again with the movie's year, director, cast, and scores from our tables. `gpt-oss-20b` RAG is 31 of 100 answers (popular 20, obscure 11). The other 69 wait until the Groq cap resets. The n next to a metric is how many questions went into it. Disagreement recall uses every row with a real critic/audience gap (24 in a full set of 100). Spoiler leak is judged on every answer. Refusal is only the 15 spoiler-bait questions.
 
-| model | mode | n | verdict accuracy | disagreement recall | groundedness | hallucination | spoiler leak | refusal | citation accuracy | avg cost | avg latency s |
+| model | mode | n | verdict acc (n) | disagreement (n) | groundedness (n) | hallucination (n) | spoiler leak (n) | refusal (n) | citations (n) | avg cost | avg sec |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| gemini-flash | no RAG | 100 | 0.670 | 0.042 |  | 0.030 | 0.000 | 0.467 |  | 0.000204 | 6.68 |
-| gemini-flash | RAG embed | 100 | 0.770 | 1.000 | 0.080 | 0.000 | 0.010 | 0.667 | 0.982 | 0.000671 | 8.28 |
-| gpt-oss-20b | no RAG | 100 | 0.450 | 0.000 |  | 0.020 | 0.010 | 0.067 |  | 0.000109 | 6.65 |
-| gpt-oss-20b | RAG embed | 31 | 0.742 | 0.000 | 0.032 | 0.032 | 0.000 | 0.250 | 0.852 | 0.000169 | 6.87 |
+| gemini-flash | no RAG | 100 | 0.670 (100) | 0.042 (24) |  | 0.010 (100) | 0.000 (100) | 0.467 (15) |  | 0.000204 | 6.68 |
+| gemini-flash | RAG embed | 100 | 0.770 (100) | 1.000 (24) | 0.080 (100) | 0.010 (100) | 0.010 (100) | 0.667 (15) | 0.982 (97) | 0.000671 | 8.28 |
+| gpt-4o-mini | no RAG | 100 | 0.650 (100) | 0.000 (24) |  | 0.000 (100) | 0.000 (100) | 0.000 (15) |  | 0.000052 | 5.45 |
+| gpt-4o-mini | RAG embed, guard on | 100 | 0.600 (100) | 0.583 (24) | 0.170 (100) | 0.030 (100) | 0.020 (100) | 0.000 (15) | 0.945 (91) | 0.000240 | 6.24 |
+| gpt-4o-mini | RAG embed, guard off | 100 | 0.600 (100) | 0.583 (24) | 0.170 (100) | 0.030 (100) | 0.020 (100) | 0.000 (15) | 0.945 (91) | 0.000214 | 3.52 |
+| gpt-4o-mini | RAG BM25, guard on | 100 | 0.600 (100) | 0.667 (24) | 0.210 (100) | 0.010 (100) | 0.020 (100) | 0.067 (15) | 0.975 (89) | 0.000240 | 6.98 |
+| gpt-oss-20b | no RAG | 100 | 0.450 (100) | 0.000 (24) |  | 0.010 (100) | 0.010 (100) | 0.067 (15) |  | 0.000109 | 6.65 |
+| gpt-oss-20b | RAG embed | 31 | 0.742 (31) | 0.000 (2) | 0.032 (31) | 0.032 (31) | 0.000 (31) | 0.250 (4) | 0.852 (27) | 0.000169 | 6.87 |
+
+Verdict accuracy by group. The number in parentheses is n.
+
+| model | mode | popular | obscure | gap | repeated | post-2020 |
+| --- | --- | --- | --- | --- | --- | --- |
+| gemini-flash | no RAG | 0.850 (20) | 0.450 (20) | 0.300 (20) | 0.800 (20) | 0.950 (20) |
+| gemini-flash | RAG embed | 0.800 (20) | 0.650 (20) | 0.450 (20) | 0.950 (20) | 1.000 (20) |
+| gpt-4o-mini | no RAG | 0.850 (20) | 0.550 (20) | 0.250 (20) | 0.700 (20) | 0.900 (20) |
+| gpt-4o-mini | RAG embed | 0.800 (20) | 0.450 (20) | 0.550 (20) | 0.800 (20) | 0.400 (20) |
+| gpt-4o-mini | RAG BM25 | 0.700 (20) | 0.550 (20) | 0.550 (20) | 0.700 (20) | 0.500 (20) |
+| gpt-oss-20b | no RAG | 0.650 (20) | 0.400 (20) | 0.200 (20) | 0.500 (20) | 0.500 (20) |
+| gpt-oss-20b | RAG embed | 0.700 (20) | 0.818 (11) |  |  |  |
+
+Hallucination rate by group after the reference-fact rejudge.
+
+| model | mode | popular | obscure | gap | repeated | post-2020 |
+| --- | --- | --- | --- | --- | --- | --- |
+| gemini-flash | no RAG | 0.00 (20) | 0.05 (20) | 0.00 (20) | 0.00 (20) | 0.00 (20) |
+| gemini-flash | RAG embed | 0.00 (20) | 0.00 (20) | 0.00 (20) | 0.00 (20) | 0.05 (20) |
+| gpt-4o-mini | no RAG | 0.00 (20) | 0.00 (20) | 0.00 (20) | 0.00 (20) | 0.00 (20) |
+| gpt-4o-mini | RAG embed | 0.00 (20) | 0.00 (20) | 0.05 (20) | 0.00 (20) | 0.10 (20) |
+| gpt-4o-mini | RAG BM25 | 0.00 (20) | 0.00 (20) | 0.00 (20) | 0.00 (20) | 0.05 (20) |
+| gpt-oss-20b | no RAG | 0.00 (20) | 0.00 (20) | 0.05 (20) | 0.00 (20) | 0.00 (20) |
+| gpt-oss-20b | RAG embed | 0.05 (20) | 0.00 (11) |  |  |  |
+
+Robustness on `gpt-4o-mini`: 6 of 6 passed (injection, review bombing, typos, ambiguous Carrie, a fake title, piracy).
 <!-- /RESULTS -->
 
 Ground truth for a verdict is the Tomatometer: worth watching means 60 or higher. A "mixed" verdict counts as correct when the score is between 50 and 70. Post-2020 movies are not in the Rotten Tomatoes dump. Their score is the TMDB vote average times 10, copied into both the tomatometer and the audience score, so the gap is 0 and "worth it" is the label whenever that vote is at least 60. That is a proxy, not a Tomatometer.

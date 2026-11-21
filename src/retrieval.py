@@ -30,6 +30,78 @@ def _norm(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def reference_facts(title: str, year: int | None = None) -> dict:
+    """Year, director, cast, and scores from our tables. TMDB only if the scrape has no row."""
+    movies, _reviews = load_tables()
+    wanted = _norm(title)
+    titles = movies["movie_title"].map(_norm)
+    pool = movies[titles == wanted]
+    if year is not None and not pool.empty:
+        years = pool["release_year"].map(_year)
+        exact = pool[years == year]
+        if not exact.empty:
+            pool = exact
+    if not pool.empty:
+        row = pool.iloc[0]
+        tomato = row.get("tomatometer_rating")
+        audience = row.get("audience_rating")
+        cast = _text_or_none(row.get("actors")) or "not in our tables"
+        if len(cast) > 400:
+            cast = cast[:400].rsplit(",", 1)[0]
+        return {
+            "title": str(row.get("movie_title") or title),
+            "year": _year(row.get("release_year")) or year,
+            "directors": _text_or_none(row.get("directors")) or "not in our tables",
+            "cast": cast,
+            "tomatometer": None if pd.isna(tomato) else float(tomato),
+            "audience_score": None if pd.isna(audience) else float(audience),
+            "overview": _text_or_none(row.get("movie_info")),
+            "source": "kaggle",
+        }
+
+    facts = {
+        "title": title,
+        "year": year,
+        "directors": "not in our tables",
+        "cast": "not in our tables",
+        "tomatometer": None,
+        "audience_score": None,
+        "overview": None,
+        "source": "none",
+    }
+    from src.tmdb_client import TMDBClient, TMDBError
+
+    client = TMDBClient()
+    try:
+        hit = client.find_movie(title, year=year)
+    except TMDBError:
+        return facts
+    if not hit:
+        return facts
+    vote = hit.get("vote_average")
+    score = None if vote is None else round(float(vote) * 10.0, 1)
+    release = hit.get("release_date") or ""
+    facts.update(
+        {
+            "title": hit.get("title") or title,
+            "year": int(release[:4]) if len(release) >= 4 and release[:4].isdigit() else year,
+            "tomatometer": score,
+            "audience_score": score,
+            "overview": hit.get("overview"),
+            "source": "tmdb",
+        }
+    )
+    try:
+        credits = client.get_credits(hit["id"])
+    except TMDBError:
+        return facts
+    if credits.get("directors"):
+        facts["directors"] = ", ".join(credits["directors"])
+    if credits.get("cast"):
+        facts["cast"] = ", ".join(credits["cast"])
+    return facts
+
+
 def load_tables() -> tuple[pd.DataFrame, pd.DataFrame]:
     global _MOVIES, _REVIEWS
     if _MOVIES is None:
@@ -37,6 +109,18 @@ def load_tables() -> tuple[pd.DataFrame, pd.DataFrame]:
         _REVIEWS = pd.read_parquet(DATA_PROCESSED / "reviews.parquet")
         _REVIEWS = _REVIEWS.set_index("rotten_tomatoes_link", drop=False)
     return _MOVIES, _REVIEWS
+
+
+def _text_or_none(value):
+    if value is None or (isinstance(value, float) and np.isnan(value)):
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except TypeError:
+        pass
+    text = str(value).strip()
+    return text or None
 
 
 def _year(value) -> int | None:
@@ -74,6 +158,8 @@ def _from_row(row) -> dict:
         "critic_audience_gap": None if pd.isna(gap) else float(gap),
         "overview": row.get("movie_info") if isinstance(row.get("movie_info"), str) else None,
         "genres": row.get("genres") if isinstance(row.get("genres"), str) else None,
+        "directors": _text_or_none(row.get("directors")),
+        "actors": _text_or_none(row.get("actors")),
     }
 
 
