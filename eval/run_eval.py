@@ -9,6 +9,7 @@ import json
 import logging
 import random
 import re
+import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -36,8 +37,11 @@ _REFUSAL = re.compile(
 )
 
 
-def _run_key(item, model, mode, retriever, guard) -> str:
-    return f"{item['id']}|{model}|{mode}|{retriever}|{int(guard)}"
+def _run_key(item, model, mode, retriever, guard, version: str = "") -> str:
+    key = f"{item['id']}|{model}|{mode}|{retriever}|{int(guard)}"
+    if version:
+        key += f"|{version}"
+    return key
 
 
 def _load_done() -> tuple[list[dict], set[str]]:
@@ -137,6 +141,7 @@ def _safe_exc(exc: Exception) -> str:
 
 
 def _one(item: dict, config: dict, judge_key: str | None, guard_model: str | None) -> dict:
+    version = config.get("version") or ""
     result = answer(
         item["question"],
         item["title"],
@@ -148,7 +153,8 @@ def _one(item: dict, config: dict, judge_key: str | None, guard_model: str | Non
         guard_model=guard_model,
     )
     row = {
-        "run_key": _run_key(item, config["model"], config["mode"], config["retriever"], config["guard"]),
+        "run_key": _run_key(item, config["model"], config["mode"], config["retriever"], config["guard"], version),
+        "version": version or None,
         "id": item["id"],
         "group": item["group"],
         "kind": item["kind"],
@@ -720,6 +726,25 @@ def _rejudge_hallucination(judge_key: str, assume_yes: bool) -> None:
         _write_reports(saved)
 
 
+def _commit_progress(n_new: int) -> None:
+    """Commit eval results so a long run is not only on this machine."""
+    subprocess.run(["git", "add", "eval/results"], cwd=ROOT, check=False)
+    committed = subprocess.run(
+        ["git", "commit", "-m", f"Save the latest eval answers ({n_new} new)."],
+        cwd=ROOT,
+        check=False,
+    )
+    if committed.returncode != 0:
+        return
+    subprocess.run(["git", "push", "origin", "HEAD"], cwd=ROOT, check=False)
+    subprocess.run(["git", "push", "origin", "HEAD:main"], cwd=ROOT, check=False)
+    subprocess.run(
+        ["git", "push", "https://github.com/Girishmanne6/WatchWise.git", "HEAD:main"],
+        cwd=ROOT,
+        check=False,
+    )
+
+
 def main() -> None:
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(message)s")
     parser = argparse.ArgumentParser()
@@ -728,6 +753,10 @@ def main() -> None:
     parser.add_argument("--models", default="", help="comma-separated model keys, so other providers are not called")
     parser.add_argument("--per-group", type=int, default=0, help="first N questions of each test group; 0 keeps all")
     parser.add_argument("--no-extra", action="store_true", help="skip the BM25 and guard-off rows")
+    parser.add_argument("--rag-only", action="store_true", help="skip no-RAG configs")
+    parser.add_argument("--only-kind", default="", help="keep only this question kind, such as spoiler")
+    parser.add_argument("--version", default="", help="tag new rows, for example v2, and keep the old rows")
+    parser.add_argument("--commit-every", type=int, default=0, help="commit and push eval/results after this many new answers")
     parser.add_argument("--judge", default="", help="judge model key. Leave empty to skip judging.")
     parser.add_argument(
         "--rejudge-only",
@@ -779,6 +808,8 @@ def main() -> None:
         print("missing eval/testset.json. Run eval/build_testset.py first.")
         sys.exit(1)
     items = _limit_groups(json.loads(TESTSET.read_text()), args.per_group)
+    if args.only_kind:
+        items = [item for item in items if item.get("kind") == args.only_kind]
     if args.models:
         requested = [part.strip() for part in args.models.split(",") if part.strip()]
     else:
@@ -809,7 +840,12 @@ def main() -> None:
         except Exception as exc:  # noqa: BLE001
             print(f"judge {judge_key} failed: {type(exc).__name__}")
             sys.exit(1)
-    configs = _configs(models, extras=not args.no_extra)
+    configs = _configs(models, extras=not args.no_extra and not args.rag_only)
+    if args.rag_only:
+        configs = [config for config in configs if config["mode"] == "rag"]
+    if args.version:
+        for config in configs:
+            config["version"] = args.version
     print("models:", ", ".join(models))
     print("judge:", judge_key or "(none)")
     _estimate(len(items), configs)
@@ -831,6 +867,25 @@ def main() -> None:
     load_tables()
     embed_texts(["warmup"])
     rows, done = _load_done()
+    if args.version == "v2" and args.only_kind:
+        rerun = {
+            (config["model"], config["mode"], config["retriever"], bool(config["guard"]))
+            for config in configs
+        }
+        changed = False
+        for row in rows:
+            if row.get("version"):
+                continue
+            if row.get("kind") != args.only_kind:
+                continue
+            ident = (row.get("model"), row.get("mode"), row.get("retriever"), bool(row.get("guard")))
+            if ident not in rerun:
+                continue
+            row["version"] = "v1"
+            changed = True
+        if changed:
+            _write_raw(rows)
+            print(f"tagged earlier {args.only_kind} rows as v1", flush=True)
     total = len(items) * len(configs)
     # The spoiler check uses the same model as the answer, never Groq.
     guard_model = models[0]
@@ -839,11 +894,19 @@ def main() -> None:
     for config in configs:
         for item in items:
             finished += 1
-            key = _run_key(item, config["model"], config["mode"], config["retriever"], config["guard"])
+            key = _run_key(
+                item,
+                config["model"],
+                config["mode"],
+                config["retriever"],
+                config["guard"],
+                config.get("version") or "",
+            )
             if key in done:
                 continue
             pending.append((finished, item, config))
     print(f"todo: {len(pending)} of {total}, workers: {args.workers}, guard model: {guard_model}", flush=True)
+    new_answers = 0
 
     def _work(job):
         index, item, config = job
@@ -870,6 +933,9 @@ def main() -> None:
                     handle.write(json.dumps(row) + "\n")
                     handle.flush()
                     rows.append(row)
+                    new_answers += 1
+                    if args.commit_every and new_answers % args.commit_every == 0:
+                        _commit_progress(new_answers)
     finally:
         saved, _keys = _load_done()
         if saved:
