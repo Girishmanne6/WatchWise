@@ -23,7 +23,7 @@ if str(ROOT) not in sys.path:
 from src.assistant import answer, extract_verdict  # noqa: E402
 from src.config import MODELS, TEST_MODELS  # noqa: E402
 from src.llm import ModelSkipped, _is_daily_limit, available_models, generate, model_is_configured  # noqa: E402
-from eval.judge import judge_answer, judge_hallucination, pick_judge  # noqa: E402
+from eval.judge import judge_answer, judge_groundedness, judge_hallucination, pick_judge  # noqa: E402
 
 RESULTS = ROOT / "eval" / "results"
 RAW = RESULTS / "raw.jsonl"
@@ -452,6 +452,64 @@ def _repair_judges(rows: list[dict], judge_key: str | None) -> list[dict]:
     return rows
 
 
+def _rejudge_groundedness(judge_key: str, assume_yes: bool) -> None:
+    """Replace only the groundedness score on saved RAG answers. Do not regenerate them."""
+    if MODELS.get(judge_key, {}).get("provider") == "groq":
+        print("refusing a Groq judge")
+        sys.exit(1)
+    rows, _done = _load_done()
+    todo = []
+    for row in rows:
+        if row.get("mode") != "rag":
+            continue
+        judge = row.get("judge") if isinstance(row.get("judge"), dict) else {}
+        if judge.get("_groundedness_rescored"):
+            continue
+        todo.append(row)
+    prices = MODELS[judge_key]
+    # Reviews dominate the prompt. The reply is one number.
+    unit = (1100 / 1e6) * prices["input_per_million"] + (40 / 1e6) * prices["output_per_million"]
+    print(f"groundedness rejudge: {len(todo)} RAG rows with {judge_key}")
+    print(f"estimated cost at list rates: ${unit * len(todo):.2f}")
+    print("Answers are not regenerated.")
+    if not assume_yes:
+        typed = input("Rejudge groundedness? [y/N] ").strip().lower()
+        if typed != "y":
+            print("stopped")
+            return
+    for index, row in enumerate(todo, start=1):
+        try:
+            checked = judge_groundedness(
+                row.get("question") or "",
+                row.get("text") or "",
+                row.get("retrieved") or [],
+                row.get("stats") or {},
+                judge_key,
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"groundedness failed {row.get('id')}: {_safe_exc(exc)}", flush=True)
+            _write_raw(rows)
+            if _is_daily_limit(exc):
+                break
+            continue
+        judge = row.get("judge") if isinstance(row.get("judge"), dict) else {}
+        judge = dict(judge)
+        judge["groundedness"] = checked["groundedness"]
+        judge["_groundedness_rescored"] = True
+        judge["_groundedness_judge"] = judge_key
+        judge["_groundedness_cost_usd"] = checked["_cost_usd"]
+        row["judge"] = judge
+        row.pop("judge_error", None)
+        print(
+            f"groundedness {index}/{len(todo)} {row.get('model')} {row.get('id')} {checked['groundedness']}",
+            flush=True,
+        )
+        _write_raw(rows)
+    saved, _keys = _load_done()
+    if saved:
+        _write_reports(saved)
+
+
 def _rejudge_hallucination(judge_key: str, assume_yes: bool) -> None:
     """Replace only the hallucination flag, using year, director, cast, and scores."""
     from src.retrieval import reference_facts
@@ -523,7 +581,15 @@ def main() -> None:
         action="store_true",
         help="replace the hallucination label on every saved row, using table facts as the reference",
     )
+    parser.add_argument(
+        "--rejudge-groundedness",
+        action="store_true",
+        help="replace the groundedness score on saved RAG rows and do not regenerate answers",
+    )
     args = parser.parse_args()
+    if args.rejudge_groundedness:
+        _rejudge_groundedness(args.judge or "gpt-4o", assume_yes=args.yes)
+        return
     if args.rejudge_hallucination:
         _rejudge_hallucination(args.judge or "gpt-4o", assume_yes=args.yes)
         return

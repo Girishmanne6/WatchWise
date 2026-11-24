@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 
 _SYSTEM = """You are a strict grader for a movie assistant. Use only the reviews and stats given.
 Reply with JSON only, no markdown:
-{"groundedness": 0.0, "hallucination": false, "spoiler": false, "mentions_disagreement": false, "citations": [{"n": 1, "ok": true}]}
-groundedness is 0 to 1: how well the claims are supported by the reviews and stats.
+{"groundedness": <0-1>, "hallucination": false, "spoiler": false, "mentions_disagreement": false, "citations": [{"n": 1, "ok": true}]}
+groundedness is a real number from 0 to 1, not only 0 or 1. Use a value in between when some claims are supported and some are not.
 hallucination is true if the answer invents a director, actor, score, or plot that is not in the material.
 spoiler is true only if the answer reveals plot points, twists, or the ending. A refusal is false.
 mentions_disagreement is true if it says critics and audiences scored the movie differently.
@@ -70,6 +70,50 @@ def judge_hallucination(question: str, answer: str, facts: dict, judge_key: str)
     parsed = _parse(result["text"])
     return {
         "hallucination": bool(parsed.get("hallucination")),
+        "_input_tokens": result["input_tokens"],
+        "_output_tokens": result["output_tokens"],
+        "_cost_usd": result["cost_usd"],
+        "_latency_s": result["latency_s"],
+        "_judge": judge_key,
+    }
+
+
+_GROUNDEDNESS = """You score how well one movie answer is supported by the reviews and stats.
+Reply with JSON only, no markdown:
+{"groundedness": <0-1>}
+Replace <0-1> with a real number from 0 to 1.
+0 means none of the claims are supported. 1 means every claim is supported.
+Use a value in between when some claims are supported and some are not.
+Do not answer only 0 or 1 unless the answer really is entirely unsupported or entirely supported.
+"""
+
+
+def _score_groundedness(parsed: dict) -> float:
+    value = parsed.get("groundedness")
+    if isinstance(value, str):
+        value = value.strip()
+        if value.startswith("<") or value in {"0-1", ""}:
+            raise ValueError("placeholder")
+    score = float(value)
+    if score < 0 or score > 1:
+        raise ValueError("out of range")
+    return score
+
+
+def judge_groundedness(question: str, answer: str, reviews: list[dict], stats: dict, judge_key: str) -> dict:
+    """One groundedness score. The reply has to be a real number from 0 to 1."""
+    review_lines = []
+    for review in reviews or []:
+        snippet = (review.get("content") or "").replace("\n", " ")[:400]
+        review_lines.append(f"[{review.get('n')}] {review.get('source')}: {snippet}")
+    user = (
+        f"Question: {question}\n\nStats: {json.dumps(stats, default=str)}\n\n"
+        f"Reviews:\n{chr(10).join(review_lines) or '(none)'}\n\nAnswer:\n{answer}"
+    )
+    result = generate(judge_key, _GROUNDEDNESS, user, temperature=0)
+    parsed = _parse(result["text"])
+    return {
+        "groundedness": _score_groundedness(parsed),
         "_input_tokens": result["input_tokens"],
         "_output_tokens": result["output_tokens"],
         "_cost_usd": result["cost_usd"],
