@@ -265,6 +265,22 @@ def _label(row) -> str:
     return f"{row['model']} | {row['mode']} | {row['retriever']} | {guard}"
 
 
+def _summarize(frame: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    summary_rows = []
+    for keys, group in frame.groupby(["model", "mode", "retriever", "guard"], dropna=False):
+        metrics = _metrics(group)
+        metrics.update({"model": keys[0], "mode": keys[1], "retriever": keys[2], "guard": keys[3]})
+        summary_rows.append(metrics)
+    group_rows = []
+    for keys, group in frame.groupby(["model", "mode", "retriever", "guard", "group"], dropna=False):
+        metrics = _metrics(group)
+        metrics.update(
+            {"model": keys[0], "mode": keys[1], "retriever": keys[2], "guard": keys[3], "group": keys[4]}
+        )
+        group_rows.append(metrics)
+    return pd.DataFrame(summary_rows), pd.DataFrame(group_rows)
+
+
 def _write_reports(rows: list[dict]) -> None:
     frame = pd.DataFrame(rows)
     if frame.empty:
@@ -273,34 +289,56 @@ def _write_reports(rows: list[dict]) -> None:
     if "judge" not in frame.columns:
         frame["judge"] = [{} for _ in range(len(frame))]
     frame["judge"] = frame["judge"].apply(lambda value: value if isinstance(value, dict) else {})
-    summary_rows = []
-    for keys, group in frame.groupby(["model", "mode", "retriever", "guard"], dropna=False):
-        metrics = _metrics(group)
-        metrics.update({"model": keys[0], "mode": keys[1], "retriever": keys[2], "guard": keys[3]})
-        summary_rows.append(metrics)
-    summary = pd.DataFrame(summary_rows)
+    if "version" not in frame.columns:
+        frame["version"] = None
+    # gpt-oss stays in an appendix. v1 spoiler rows stay in raw.jsonl for the before/after chart.
+    main = frame[frame["model"] != "gpt-oss-20b"].copy()
+    if (main["version"] == "v2").any():
+        main = main[main["version"].fillna("v2") != "v1"]
+    appendix = frame[frame["model"] == "gpt-oss-20b"]
+    summary, by_group = _summarize(main)
     summary.to_csv(RESULTS / "summary.csv", index=False)
-
-    group_rows = []
-    for keys, group in frame.groupby(["model", "mode", "retriever", "guard", "group"], dropna=False):
-        metrics = _metrics(group)
-        metrics.update(
-            {"model": keys[0], "mode": keys[1], "retriever": keys[2], "guard": keys[3], "group": keys[4]}
-        )
-        group_rows.append(metrics)
-    by_group = pd.DataFrame(group_rows)
     by_group.to_csv(RESULTS / "summary_by_group.csv", index=False)
+    if not appendix.empty:
+        extra, extra_group = _summarize(appendix)
+        extra.to_csv(RESULTS / "summary_gpt_oss.csv", index=False)
+        extra_group.to_csv(RESULTS / "summary_gpt_oss_by_group.csv", index=False)
 
-    _figures(summary, by_group)
-    _examples(frame)
-    _manual(frame)
+    _figures(summary, by_group, frame)
+    _examples(main)
+    _manual(main)
     print(summary.to_string(index=False))
     print(f"wrote {RESULTS / 'summary.csv'}")
 
 
-def _figures(summary: pd.DataFrame, by_group: pd.DataFrame) -> None:
+def _slide_style() -> None:
+    plt.rcParams.update(
+        {
+            "figure.facecolor": "white",
+            "axes.facecolor": "white",
+            "savefig.facecolor": "white",
+            "font.size": 16,
+            "axes.titlesize": 20,
+            "axes.labelsize": 16,
+            "xtick.labelsize": 14,
+            "ytick.labelsize": 14,
+            "legend.fontsize": 14,
+        }
+    )
+
+
+def _short_model(name: str) -> str:
+    return {
+        "gemini-3.5-flash-lite": "Flash-Lite",
+        "gpt-4o-mini": "gpt-4o-mini",
+        "gemma-4-26b-a4b-it": "Gemma 4 26B",
+    }.get(name, name)
+
+
+def _figures(summary: pd.DataFrame, by_group: pd.DataFrame, raw: pd.DataFrame) -> None:
     figures = RESULTS / "figures"
     figures.mkdir(parents=True, exist_ok=True)
+    _slide_style()
     summary = summary.copy()
     summary["label"] = summary.apply(_label, axis=1)
 
@@ -347,6 +385,126 @@ def _figures(summary: pd.DataFrame, by_group: pd.DataFrame) -> None:
     ax.set_title("Cost vs verdict accuracy")
     fig.tight_layout()
     fig.savefig(figures / "cost_vs_accuracy.png", dpi=140)
+    plt.close(fig)
+    _slide_charts(figures, summary, by_group, raw)
+
+
+def _slide_charts(figures: Path, summary: pd.DataFrame, by_group: pd.DataFrame, raw: pd.DataFrame) -> None:
+    """Big-font charts for slides. gpt-oss is already out of summary."""
+    import numpy as np
+
+    pairs = []
+    for model, part in summary.groupby("model", sort=False):
+        no = part[(part["mode"] == "no_rag") & (part["retriever"] == "embed") & (part["guard"] == True)]  # noqa: E712
+        rag = part[(part["mode"] == "rag") & (part["retriever"] == "embed") & (part["guard"] == True)]  # noqa: E712
+        if no.empty or rag.empty:
+            continue
+        pairs.append((model, no.iloc[0], rag.iloc[0]))
+    if pairs:
+        labels = [_short_model(model) for model, _, _ in pairs]
+        x = np.arange(len(labels))
+        width = 0.36
+        fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+        for ax, key, title in (
+            (axes[0], "verdict_accuracy", "Verdict accuracy"),
+            (axes[1], "disagreement_recall", "Disagreement recall"),
+        ):
+            ax.bar(x - width / 2, [row[key] for _, row, _ in pairs], width, label="No RAG", color="#1f4e79")
+            ax.bar(x + width / 2, [row[key] for _, _, row in pairs], width, label="RAG", color="#5b8c5a")
+            ax.set_ylim(0, 1)
+            ax.set_xticks(x)
+            ax.set_xticklabels(labels)
+            ax.set_title(title)
+            ax.legend()
+        fig.suptitle("No RAG vs RAG", fontsize=22)
+        fig.tight_layout()
+        fig.savefig(figures / "rag_vs_norag.png", dpi=160)
+        plt.close(fig)
+
+    rag_groups = by_group[(by_group["mode"] == "rag") & (by_group["retriever"] == "embed") & (by_group["guard"] == True)]  # noqa: E712
+    groups = ["popular", "obscure", "gap", "repeated", "post-2020"]
+    models = [model for model in rag_groups["model"].drop_duplicates() if not rag_groups[rag_groups["model"] == model].empty]
+    if models:
+        x = np.arange(len(groups))
+        width = 0.8 / max(len(models), 1)
+        fig, ax = plt.subplots(figsize=(14, 6))
+        colors = ["#1f4e79", "#c4554a", "#5b8c5a", "#6a4c93"]
+        for index, model in enumerate(models):
+            part = rag_groups[rag_groups["model"] == model].set_index("group")
+            heights = [float(part.loc[name, "verdict_accuracy"]) if name in part.index else 0 for name in groups]
+            ax.bar(x + (index - (len(models) - 1) / 2) * width, heights, width, label=_short_model(model), color=colors[index % len(colors)])
+        ax.set_ylim(0, 1)
+        ax.set_xticks(x)
+        ax.set_xticklabels(groups)
+        ax.set_ylabel("Verdict accuracy")
+        ax.set_title("RAG accuracy by group")
+        ax.legend()
+        fig.tight_layout()
+        fig.savefig(figures / "accuracy_by_group_rag.png", dpi=160)
+        plt.close(fig)
+
+    mini = summary[(summary["model"] == "gpt-4o-mini") & (summary["mode"] == "rag") & (summary["guard"] == True)]  # noqa: E712
+    embed = mini[mini["retriever"] == "embed"]
+    bm25 = mini[mini["retriever"] == "bm25"]
+    if not embed.empty and not bm25.empty:
+        metrics = [("verdict_accuracy", "Verdict accuracy"), ("disagreement_recall", "Disagreement recall"), ("groundedness", "Groundedness")]
+        x = np.arange(len(metrics))
+        width = 0.36
+        fig, ax = plt.subplots(figsize=(12, 6))
+        ax.bar(x - width / 2, [float(embed.iloc[0][key]) for key, _ in metrics], width, label="Embeddings", color="#1f4e79")
+        ax.bar(x + width / 2, [float(bm25.iloc[0][key]) for key, _ in metrics], width, label="BM25", color="#c4554a")
+        ax.set_ylim(0, 1)
+        ax.set_xticks(x)
+        ax.set_xticklabels([label for _, label in metrics])
+        ax.set_title("gpt-4o-mini: BM25 vs embeddings")
+        ax.legend()
+        fig.tight_layout()
+        fig.savefig(figures / "bm25_vs_embed.png", dpi=160)
+        plt.close(fig)
+
+    if raw is None or raw.empty or "kind" not in raw.columns:
+        return
+    spoiler = raw[(raw["kind"] == "spoiler") & (raw["mode"] == "rag") & (raw["retriever"] == "embed") & (raw["guard"] == True)]  # noqa: E712
+    spoiler = spoiler[spoiler["model"].isin(["gpt-4o-mini", "gemini-3.5-flash-lite"])]
+    if spoiler.empty:
+        return
+    version = spoiler["version"] if "version" in spoiler.columns else None
+    if version is None:
+        spoiler = spoiler.copy()
+        spoiler["version"] = "v1"
+    else:
+        spoiler = spoiler.copy()
+        spoiler["version"] = spoiler["version"].fillna("v1")
+    models = [model for model in ["gemini-3.5-flash-lite", "gpt-4o-mini"] if model in set(spoiler["model"])]
+    if not models:
+        return
+    x = np.arange(len(models))
+    width = 0.36
+    fig, ax = plt.subplots(figsize=(12, 6))
+    for index, label in enumerate(("v1", "v2")):
+        heights = []
+        for model in models:
+            part = spoiler[(spoiler["model"] == model) & (spoiler["version"] == label)]
+            if part.empty:
+                heights.append(0)
+                continue
+            scores = []
+            for _, row in part.iterrows():
+                judge = row["judge"] if isinstance(row["judge"], dict) else {}
+                leaked = bool(judge.get("spoiler")) if judge else False
+                scores.append(bool(refused_spoiler(row["text"]) and not leaked))
+            heights.append(sum(scores) / len(scores))
+        if label == "v2" and (spoiler["version"] == "v2").sum() == 0:
+            continue
+        ax.bar(x + (index - 0.5) * width, heights, width, label=label, color="#1f4e79" if label == "v1" else "#5b8c5a")
+    ax.set_ylim(0, 1)
+    ax.set_xticks(x)
+    ax.set_xticklabels([_short_model(model) for model in models])
+    ax.set_ylabel("Refusal correctness")
+    ax.set_title("Spoiler refusal, v1 vs v2")
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(figures / "spoiler_refusal_v1_v2.png", dpi=160)
     plt.close(fig)
 
 

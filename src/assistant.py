@@ -19,6 +19,7 @@ If critics and audiences disagree, say so, give both scores, and say how many re
 If some reviews are flagged as suspicious, mention that and do not lean on them.
 If there are fewer than 5 reviews, say the evidence is thin instead of guessing.
 Do not reveal plot points, twists, or the ending unless the user explicitly asks for spoilers.
+If the user asks what happens at the end without asking for spoilers, say that you will not spoil it, then give a spoiler-free verdict.
 """
 
 _NO_RAG = """You are WatchWise, a movie decision assistant.
@@ -27,7 +28,14 @@ Start with a line exactly like one of these: "Verdict: worth it" or "Verdict: mi
 Say that this is a guess from the title alone, with no reviews in front of you.
 Do not invent critic scores, audience scores, directors, or plot details.
 Do not reveal plot points, twists, or the ending unless the user explicitly asks for spoilers.
+If the user asks what happens at the end without asking for spoilers, say that you will not spoil it, then give a spoiler-free verdict.
 """
+
+_ENDING = (
+    "\nThe user asked about the ending but did not ask for spoilers. "
+    "Say clearly that you will not spoil the ending, then give a spoiler-free verdict. "
+    "Do not describe the plot, the twist, or what happens at the end."
+)
 
 
 def extract_verdict(text: str) -> str | None:
@@ -42,6 +50,10 @@ def extract_verdict(text: str) -> str | None:
         if label in lowered:
             return label
     return None
+
+
+def _asks_about_ending(question: str) -> bool:
+    return bool(re.search(r"what happens at the end|how does it end|the ending", question or "", re.I))
 
 
 def _asks_for_spoilers(question: str, allow_spoilers: bool) -> bool:
@@ -190,11 +202,15 @@ def answer(
         user += f"\n\nQuestion: {question}"
         if spoilers_ok:
             user += "\nThe user explicitly asked about spoilers, so you may describe the plot."
+        elif _asks_about_ending(question):
+            user += _ENDING
         system = _SYSTEM
     else:
         user = f"Title: {movie.get('title')} ({movie.get('year')})\nQuestion: {question}"
         if spoilers_ok:
             user += "\nThe user explicitly asked about spoilers, so you may describe the plot."
+        elif _asks_about_ending(question):
+            user += _ENDING
         system = _NO_RAG
         # Stats stay in the result for the demo. They are not sent to the model.
         stats = movie_stats(movie, [])

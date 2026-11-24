@@ -58,21 +58,19 @@ The spoiler check uses the same model as the answer. BM25 and the guard-off row 
 Copied from `eval/results/summary.csv` after `python eval/run_eval.py`. Every number below comes from that run.
 
 <!-- RESULTS -->
-Judge for every finished answer is `gpt-4o`. Hallucination on those rows was graded again with the movie's year, director, cast, and scores from our tables. The Gemma rows below are the exception: their hallucination flag is still the first rubric, and the reference pass runs after the subset finishes. `gpt-oss-20b` RAG is 31 of 100 answers (popular 20, obscure 11). The other 69 wait until the Groq cap resets. The n next to a metric is how many questions went into it. Disagreement recall uses every row with a real critic/audience gap (24 in a full set of 100, 12 in the Gemma rows saved so far). Spoiler leak is judged on every answer. Refusal is only the spoiler-bait questions (15 in a full set, 4 in the saved Gemma rows).
+Judge for every finished answer is `gpt-4o`. Hallucination was graded again with the movie's year, director, cast, and scores, except the Gemma rows, which still have the first rubric. Groundedness on every RAG row was scored again after the judge example stopped using `0.0`. The new scores are real values from 0 to 1. That pass cost $0.97 and did not regenerate answers. The n next to a metric is how many questions went into it. Disagreement recall uses every row with a real critic/audience gap (24 in a full set of 100, 12 in the saved Gemma rows). Spoiler leak is judged on every answer. Refusal is only the spoiler-bait questions.
 
-Gemma is a fixed 50-question subset: the first 10 questions of each of the 5 groups, same ids for no-RAG and RAG. This snapshot has 45 of those 50 no-RAG answers (post-2020 has 5) and no RAG answers. The full 200 was about 1.8 answers a minute with 503 high-demand retries, not a daily cap, so it would not finish within an hour.
+Gemma is a fixed 50-question subset, the first 10 questions of each group. This snapshot has 45 no-RAG answers (post-2020 has 5) and no RAG answers. The spoiler prompt now tells the model to refuse an ending question that does not ask for spoilers. Those questions have not been rerun, because `data/processed` is not on this machine, so the refusal chart is still v1.
 
 | model | mode | n | verdict acc (n) | disagreement (n) | groundedness (n) | hallucination (n) | spoiler leak (n) | refusal (n) | citations (n) | avg cost | avg sec |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | gemini-3.5-flash-lite | no RAG | 100 | 0.670 (100) | 0.042 (24) |  | 0.010 (100) | 0.000 (100) | 0.467 (15) |  | 0.000204 | 6.68 |
-| gemini-3.5-flash-lite | RAG embed, guard on | 100 | 0.770 (100) | 1.000 (24) | 0.080 (100) | 0.010 (100) | 0.010 (100) | 0.667 (15) | 0.982 (97) | 0.000671 | 8.28 |
+| gemini-3.5-flash-lite | RAG embed, guard on | 100 | 0.770 (100) | 1.000 (24) | 0.812 (100) | 0.010 (100) | 0.010 (100) | 0.667 (15) | 0.982 (97) | 0.000671 | 8.28 |
 | gemma-4-26b-a4b-it | no RAG, subset in progress | 45 | 0.578 (45) | 0.000 (12) |  | 0.000 (45) | 0.000 (45) | 0.000 (4) |  | 0.000000 | 42.75 |
 | gpt-4o-mini | no RAG | 100 | 0.650 (100) | 0.000 (24) |  | 0.000 (100) | 0.000 (100) | 0.000 (15) |  | 0.000052 | 5.45 |
-| gpt-4o-mini | RAG embed, guard on | 100 | 0.600 (100) | 0.583 (24) | 0.170 (100) | 0.030 (100) | 0.020 (100) | 0.000 (15) | 0.945 (91) | 0.000240 | 6.24 |
-| gpt-4o-mini | RAG embed, guard off | 100 | 0.600 (100) | 0.583 (24) | 0.170 (100) | 0.030 (100) | 0.020 (100) | 0.000 (15) | 0.945 (91) | 0.000214 | 3.52 |
-| gpt-4o-mini | RAG BM25, guard on | 100 | 0.600 (100) | 0.667 (24) | 0.210 (100) | 0.010 (100) | 0.020 (100) | 0.067 (15) | 0.975 (89) | 0.000240 | 6.98 |
-| gpt-oss-20b | no RAG | 100 | 0.450 (100) | 0.000 (24) |  | 0.010 (100) | 0.010 (100) | 0.067 (15) |  | 0.000109 | 6.65 |
-| gpt-oss-20b | RAG embed | 31 | 0.742 (31) | 0.000 (2) | 0.032 (31) | 0.032 (31) | 0.000 (31) | 0.250 (4) | 0.852 (27) | 0.000169 | 6.87 |
+| gpt-4o-mini | RAG embed, guard on | 100 | 0.600 (100) | 0.583 (24) | 0.830 (100) | 0.030 (100) | 0.020 (100) | 0.000 (15) | 0.945 (91) | 0.000240 | 6.24 |
+| gpt-4o-mini | RAG embed, guard off | 100 | 0.600 (100) | 0.583 (24) | 0.830 (100) | 0.030 (100) | 0.020 (100) | 0.000 (15) | 0.945 (91) | 0.000214 | 3.52 |
+| gpt-4o-mini | RAG BM25, guard on | 100 | 0.600 (100) | 0.667 (24) | 0.831 (100) | 0.010 (100) | 0.020 (100) | 0.067 (15) | 0.975 (89) | 0.000240 | 6.98 |
 
 Verdict accuracy by group. The number in parentheses is n.
 
@@ -84,10 +82,8 @@ Verdict accuracy by group. The number in parentheses is n.
 | gpt-4o-mini | no RAG | 0.850 (20) | 0.550 (20) | 0.250 (20) | 0.700 (20) | 0.900 (20) |
 | gpt-4o-mini | RAG embed | 0.800 (20) | 0.450 (20) | 0.550 (20) | 0.800 (20) | 0.400 (20) |
 | gpt-4o-mini | RAG BM25 | 0.700 (20) | 0.550 (20) | 0.550 (20) | 0.700 (20) | 0.500 (20) |
-| gpt-oss-20b | no RAG | 0.650 (20) | 0.400 (20) | 0.200 (20) | 0.500 (20) | 0.500 (20) |
-| gpt-oss-20b | RAG embed | 0.700 (20) | 0.818 (11) |  |  |  |
 
-Hallucination rate by group. Every row except Gemma used the reference-fact rejudge. Gemma's zeros are the first rubric, on the 45 saved answers.
+Hallucination rate by group. Gemma's zeros are the first rubric, on the 45 saved answers.
 
 | model | mode | popular | obscure | gap | repeated | post-2020 |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -97,10 +93,19 @@ Hallucination rate by group. Every row except Gemma used the reference-fact reju
 | gpt-4o-mini | no RAG | 0.00 (20) | 0.00 (20) | 0.00 (20) | 0.00 (20) | 0.00 (20) |
 | gpt-4o-mini | RAG embed | 0.00 (20) | 0.00 (20) | 0.05 (20) | 0.00 (20) | 0.10 (20) |
 | gpt-4o-mini | RAG BM25 | 0.00 (20) | 0.00 (20) | 0.00 (20) | 0.00 (20) | 0.05 (20) |
-| gpt-oss-20b | no RAG | 0.00 (20) | 0.00 (20) | 0.05 (20) | 0.00 (20) | 0.00 (20) |
-| gpt-oss-20b | RAG embed | 0.05 (20) | 0.00 (11) |  |  |  |
 
-Robustness on `gpt-4o-mini`: 6 of 6 passed (injection, review bombing, typos, ambiguous Carrie, a fake title, piracy). The demo cache for the six demo movies was already warm on `gpt-4o-mini`. Gemma's 42 second average includes the 503 retry waits.
+Slide charts, white background, are in `eval/results/figures/`: `rag_vs_norag.png`, `accuracy_by_group_rag.png`, `bm25_vs_embed.png`, and `spoiler_refusal_v1_v2.png`. The last one is v1 only until the spoiler questions are rerun.
+
+Robustness on `gpt-4o-mini`: 6 of 6 passed (injection, review bombing, typos, ambiguous Carrie, a fake title, piracy).
+
+### Appendix: gpt-oss-20b
+
+Not in the main table or the charts. RAG is 31 of 100 (popular 20, obscure 11). Groundedness below is the rescored 0–1 value. From `eval/results/summary_gpt_oss.csv`.
+
+| model | mode | n | verdict acc (n) | disagreement (n) | groundedness (n) | hallucination (n) | spoiler leak (n) | refusal (n) | citations (n) | avg cost | avg sec |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| gpt-oss-20b | no RAG | 100 | 0.450 (100) | 0.000 (24) |  | 0.010 (100) | 0.010 (100) | 0.067 (15) |  | 0.000109 | 6.65 |
+| gpt-oss-20b | RAG embed | 31 | 0.742 (31) | 0.000 (2) | 0.771 (31) | 0.032 (31) | 0.000 (31) | 0.250 (4) | 0.852 (27) | 0.000169 | 6.87 |
 <!-- /RESULTS -->
 
 Ground truth for a verdict is the Tomatometer: worth watching means 60 or higher. A "mixed" verdict counts as correct when the score is between 50 and 70. Post-2020 movies are not in the Rotten Tomatoes dump. Their score is the TMDB vote average times 10, copied into both the tomatometer and the audience score, so the gap is 0 and "worth it" is the label whenever that vote is at least 60. That is a proxy, not a Tomatometer.
