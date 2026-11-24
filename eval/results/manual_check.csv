@@ -1,58 +1,62 @@
 id,model,mode,question,answer,judge_verdict,judge_groundedness,judge_hallucination,judge_spoiler,human_verdict,human_groundedness,human_hallucination,human_spoiler
-post-2020-3-agree,gemini-3.5-flash-lite,no_rag,Do critics and audiences agree on Barbie?,"Verdict: worth it
+popular-5-verdict,gpt-4o-mini,rag,Is Joker (2019) worth watching?,"Verdict: mixed
 
-This is just a guess from the title alone, with no reviews in front of me.",worth it,0.0,False,False,,,,
-obscure-1-family,gemini-3.5-flash-lite,no_rag,Is Girl 27 good for a family movie night?,"Verdict: skip
+The movie ""Joker"" has garnered a significant audience score of 88 from over 66,000 ratings, indicating that many viewers found it compelling and impactful, particularly praising Joaquin Phoenix's performance [2][9][11]. However, critics are less enthusiastic, with a Tomatometer score of 68 from 574 ratings, suggesting a divide in opinion. Some critics describe the film as lacking substance and being overly cynical [3][4][6]. The evidence shows a strong audience appreciation contrasted with a more critical reception from professionals, leading to a mixed verdict overall.",mixed,0.9,False,False,,,,
+obscure-9-agree,gpt-4o-mini,rag,Do critics and audiences agree on Time For Ilhan?,"Verdict: mixed
 
-This is a guess from the title alone, with no reviews in front of you. 
+Critics generally praise ""Time For Ilhan,"" giving it a high Tomatometer score of 94 based on 18 reviews, highlighting its insightful portrayal of Ilhan Omar and the political landscape. However, the audience score is significantly lower at 42 from 61 ratings, indicating a stark divide in reception. This 52-point gap suggests that while critics find value in the documentary, audiences may feel differently about its execution or content.",mixed,1.0,False,False,,,,
+repeated-3-agree,gemma-4-26b-a4b-it,rag,Do critics and audiences agree on Invincible?,"Verdict: mixed
 
-Based on the title and subject matter usually associated with a documentary called *Girl 27* (2007), it is a very heavy, sensitive real-world subject that is definitely not suitable or intended for a family movie night.",skip,0.0,False,False,,,,
-repeated-8-verdict,gpt-4o-mini,no_rag,Is The Out-of-Towners (1970) worth watching?,"Verdict: mixed. This is a guess from the title alone, with no reviews in front of me.",mixed,0.0,False,False,,,,
-popular-1-verdict,gpt-4o-mini,no_rag,Is The Campaign (2012) worth watching?,"Verdict: mixed. This is a guess from the title alone, with no reviews in front of me.",mixed,0.0,False,False,,,,
-repeated-3-agree,gpt-4o-mini,no_rag,Do critics and audiences agree on Invincible?,"Verdict: worth it. This is a guess from the title alone, with no reviews in front of me.",worth it,0.0,False,False,,,,
-repeated-0-verdict,gpt-4o-mini,no_rag,Is Total Recall (2012) worth watching?,"Verdict: mixed. This is a guess from the title alone, with no reviews in front of me.",mixed,0.0,False,False,,,,
-popular-9-verdict,gpt-4o-mini,no_rag,Is The Lord of the Rings: The Fellowship of the Ring (2001) worth watching?,"Verdict: worth it. This is a guess from the title alone, with no reviews in front of me.",worth it,0.0,False,False,,,,
-repeated-2-verdict,gpt-4o-mini,rag,Is Our Brand Is Crisis (2005) worth watching?,"Verdict: worth it
+The movie is a mixed experience. While some critics praise it as an astoundingly rich film [2] and a provocative parable [3], others feel the lead lacks the charisma to carry the film [6]. Critics and audiences largely agree on the quality, with a critic score of 54 from 52 ratings and an audience score of 51 from 4693 ratings.",mixed,1.0,False,False,,,,
+popular-3-verdict,gpt-4o-mini,no_rag,Is Scott Pilgrim vs. the World (2010) worth watching?,"Verdict: worth it. This is a guess from the title alone, with no reviews in front of me.",worth it,0.0,False,False,,,,
+obscure-7-family,gpt-4o-mini,rag,Is Joffrey: Mavericks of American Dance good for a family movie night?,"Verdict: mixed
 
-""Our Brand Is Crisis"" has a strong critical reception with a 93% Tomatometer from 40 critics, indicating that it is well-regarded in the film community. Critics highlight its thought-provoking themes and relevance, particularly regarding the complexities of American influence in foreign elections. While the audience score is lower at 75%, the film's critical acclaim suggests it offers valuable insights worth exploring, especially for those interested in political documentaries.",worth it,0.9,False,False,,,,
-gap-2-spoiler,gpt-4o-mini,rag,What happens at the end of Death Sentence?,"Verdict: skip  
-""Death Sentence"" has a significant divide between critics and audiences, with critics giving it a low Tomatometer score of 20% from 113 ratings, while audiences rate it much higher at 60% from 97,590 ratings. Critics describe it as a poorly executed mix of family drama and revenge thriller, often criticizing its violence and lack of depth [2][4][9]. Although some audience members may find it entertaining for its action sequences, the overwhelming negative feedback from critics suggests that it may not be worth your time.",skip,0.8,False,False,,,,
-popular-9-agree,gemini-3.5-flash-lite,rag,Do critics and audiences agree on The Lord of the Rings: The Fellowship of the Ring?,"Verdict: worth it
+""Joffrey: Mavericks of American Dance"" presents a blend of valuable information and archival footage about the Joffrey dance company, but critics note that it lacks emotional depth and personality. With a Tomatometer score of 55 from 11 critics and an audience score of 50 from 52 ratings, there is a slight disagreement between critics and audiences, with critics generally finding it informative but not engaging. The film may appeal to dance enthusiasts, but its slow pace and traditional documentary style might not hold the attention of a family audience looking for entertainment.",mixed,0.9,False,False,,,,
+repeated-0-verdict,gemma-4-26b-a4b-it,rag,Is Total Recall (2012) worth watching?,"Verdict: mixed
 
-The movie is well worth watching, backed by an impressive 91 Tomatometer from 233 critic ratings and a 95 audience score from 1,355,751 audience ratings, resulting in a minimal critic-minus-audience gap of -4. Critics and audiences largely agree that the film is a triumphant, visually striking, and faithful adaptation of Tolkien's work [1, 2, 4, 5, 8], with reviewers praising its pacing, look, and sound [6, 7].",worth it,0.9,False,False,,,,
-popular-7-verdict,gpt-4o-mini,rag,Is Amy (2015) worth watching?,"Verdict: worth it
+The movie is a polarizing experience where critics and audiences disagree. Critics largely dismissed the film as a pointless, lazy, and unnecessary remake [3, 4, 5, 7], though one critic suggested it could be memorable if taken for enjoyment [6]. On the other hand, some audience members found it to be a fantastic and absorbing sci-fi action film [1, 9]. Critics gave the film a 31% score from 234 ratings, while audiences gave it a 47% score from 116,791 ratings.",mixed,0.9,False,False,,,,
+gap-6-verdict,gpt-4o-mini,rag,Is Party Monster (2003) worth watching?,"Verdict: mixed
 
-""Amy"" is highly regarded by critics, boasting a 95% score from 219 ratings, and an impressive audience score of 87% from over 22,000 ratings. The reviews highlight its emotional depth and powerful storytelling, making it a compelling documentary about Amy Winehouse's life. Critics describe it as a tough but necessary watch that lingers in the mind long after viewing, with strong editing that captivates the audience [1][4][5]. Despite some audience reviews expressing the film's dark themes, the overall consensus leans towards it being a worthwhile experience.",worth it,1.0,False,False,,,,
-post-2020-3-verdict,gpt-4o-mini,rag,Is Barbie (2023) worth watching?,"Verdict: mixed
+""Party Monster"" has a significant divide between critics and audiences. Critics have given it a low Tomatometer score of 29% based on 79 reviews, indicating a generally unfavorable reception, with comments highlighting its lack of substance and coherence [1][4][6]. However, audiences seem to enjoy it more, reflected in a much higher audience score of 75% from over 36,000 ratings. This suggests that while critics found it lacking, many viewers found it entertaining. With such a stark contrast in opinions, it may appeal to those who enjoy its style despite the critical backlash.",mixed,1.0,False,False,,,,
+post-2020-5-spoiler,gpt-4o-mini,rag,What happens at the end of Spider-Man: Across the Spider-Verse?,"I will not spoil the ending. 
 
-The evidence suggests that ""Barbie"" has stunning visuals and strong performances, particularly from Margot Robbie and Ryan Gosling, which many viewers appreciated [1][6][9]. However, the storytelling has been criticized for being chaotic and not thoroughly exploring its themes, leading to a divisive reception among audiences [1][5][10]. With an audience score of 69 from 11,838 ratings, it indicates a generally favorable reception, but the mixed reviews highlight significant concerns about the narrative depth. Overall, it may be worth watching for its visual appeal and performances, but expectations regarding the story should be tempered.",mixed,0.9,False,False,,,,
-repeated-6-agree,gemini-3.5-flash-lite,rag,Do critics and audiences agree on Brothers?,"Verdict: mixed
-
-Yes, critics and audiences largely agree on *Brothers*, as both groups give it middling scores with a tiny gap of just 2 points (Tomatometer: 64 from 157 ratings; Audience score: 62 from 194,505 ratings). However, with only 2 audience reviews provided in the text, the specific audience feedback in front of us is too thin to rely on for a full comparison.",mixed,0.8,False,False,,,,
-repeated-5-spoiler,gemini-3.5-flash-lite,no_rag,What happens at the end of Oliver Twist?,"Verdict: worth it
-
-This is a guess from the title alone, with no reviews in front of you. 
-
-Since you explicitly asked about the ending, I can note that this 1951 film adaptation follows the classic Charles Dickens story, culminating in its traditional conclusion involving the orphan Oliver, the criminal underworld of London, and the discovery of his true heritage. However, because I must avoid revealing plot points and twists, I cannot share the specific details of how the story ends.",worth it,0.0,False,False,,,,
-gap-4-verdict,gpt-4o-mini,rag,Is Four Rooms (1996) worth watching?,"Verdict: mixed
-
-Four Rooms has a significant divide between critics and audiences. Critics have given it a low Tomatometer score of 13 from 45 ratings, indicating a generally unfavorable view, with many reviews describing it as mindless or tedious [1][2][6]. However, the audience score is much more favorable at 69 from over 55,000 ratings, suggesting that viewers found some enjoyment in it. This discrepancy highlights that while critics largely panned the film, audiences appreciated certain aspects, particularly the latter segments. With 45 critic reviews and a large audience base, the evidence suggests that it might be worth watching if you're curious about the unique collaboration of directors, but manage your expectations based on the critical reception.",mixed,0.9,False,False,,,,
-popular-5-spoiler,gemini-3.5-flash-lite,no_rag,What happens at the end of Joker?,"Verdict: worth it
-
-This is a guess from the title alone, with no reviews in front of you. 
-
-Since you explicitly asked for spoilers about what happens at the end of the film, please note that because I have no reviews or reference materials in front of me, I cannot provide details on the ending, plot points, or twists of *Joker* (2019).",worth it,0.0,False,False,,,,
-gap-7-verdict,gpt-4o-mini,rag,Is The We and the I (2013) worth watching?,"Verdict: mixed
-
-""The We and the I"" has a solid critic score of 70, indicating that many critics found value in its portrayal of youth and the dynamics within a group of teens. However, the audience score of 48 suggests that viewers were less impressed, leading to a significant gap of 22 points between critics and audiences. Critics praised the film for its immersive experience and emotional moments, while some noted its thin storytelling and lack of depth. With 43 critic reviews and 1201 audience ratings, the evidence shows a divide in opinion, making it a mixed recommendation.",mixed,1.0,False,False,,,,
-popular-2-spoiler,gpt-4o-mini,no_rag,What happens at the end of American Gangster?,"I'm here to help with your movie decision, but I can't reveal plot points or endings. However, I can give you my guess based on the title alone. 
-
-Verdict: worth it. 
-
-This is just a guess from the title, with no reviews in front of me. If you have any other questions or need help with a different movie, feel free to ask!",worth it,0.0,False,False,,,,
+Verdict: mixed  
+""Spider-Man: Across the Spider-Verse"" showcases groundbreaking animation and a plethora of Spider-Man characters, which many viewers found impressive and entertaining [1][2][4]. However, some audience members felt the story was lacking or disjointed, with criticisms about pacing and narrative coherence [3][10]. The audience score is 83 from 9,590 ratings, indicating a generally positive reception, but the mixed reviews suggest that while it excels in visuals, it may not resonate with everyone in terms of storytelling.",mixed,0.8,False,False,,,,
 post-2020-7-verdict,gemini-3.5-flash-lite,rag,Is Dune: Part Two (2024) worth watching?,"Verdict: worth it
 
 *Dune: Part Two* is worth watching as a thrilling and visually stunning sci-fi epic that successfully builds upon its predecessor [3, 4, 5]. While a few viewers found it long, slow, or dialogue-heavy [1, 6, 8, 9, 11], the vast majority of the provided audience reviews praise its incredible cinematography, strong performances, and compelling narrative depth [2, 3, 4, 5, 6, 8, 12]. With 0 critic ratings and 9,021 audience ratings resulting in an 81 overall score, the film delivers a powerful audiovisual experience on the big screen [2, 4, 5].",worth it,0.8,False,False,,,,
-obscure-7-verdict,gpt-4o-mini,rag,Is Joffrey: Mavericks of American Dance (2012) worth watching?,"Verdict: mixed
+repeated-1-family,gemini-3.5-flash-lite,no_rag,Is Bangkok Dangerous good for a family movie night?,"Verdict: skip
 
-""Joffrey: Mavericks of American Dance"" presents a blend of valuable information and archival footage about the Joffrey dance company, but critics note that it often lacks emotional depth and originality. With a Tomatometer score of 55 from 11 critics and an audience score of 50 from 52 ratings, there is a noticeable divide in reception. Critics appreciate the historical context but criticize the film's execution, suggesting it may appeal more to dedicated dance enthusiasts than to a general audience. The evidence is mixed, indicating that while it has merits, it may not be universally engaging.",mixed,1.0,False,False,,,,
+This is a guess from the title alone, with no reviews in front of you. 
+
+Based on the title and the typical themes associated with action thrillers of this nature, *Bangkok Dangerous* is generally not suitable for a family movie night.",skip,0.0,False,False,,,,
+post-2020-6-agree,gpt-4o-mini,rag,Do critics and audiences agree on Poor Things?,"Verdict: worth it
+
+The audience reception for ""Poor Things"" is quite positive, with a score of 76 from 5942 ratings, indicating that many viewers found it enjoyable and thought-provoking. Audience reviews highlight the film's unique storytelling, strong performances—especially by Emma Stone—and its artistic qualities. While there are no critic reviews available yet, the audience's enthusiasm suggests that the film is worth watching for those who appreciate inventive cinema. However, the evidence is thin since there are no critic ratings to compare against the audience's perspective.",worth it,0.7,False,False,,,,
+popular-9-verdict,gemini-3.5-flash-lite,rag,Is The Lord of the Rings: The Fellowship of the Ring (2001) worth watching?,"Verdict: worth it
+
+The movie is well worth watching, praised by critics and audiences alike for its astonishing filmmaking [3], striking visuals [4], and gripping adventure [7]. Reviewers note that despite the lengthy runtime, the pacing keeps the story engaging [2, 5]. Based on the broader stats provided, critics give it a 91 (from 233 ratings) and audiences give it a 95 (from 1,355,751 ratings).",worth it,1.0,False,False,,,,
+gap-7-family,gpt-4o-mini,rag,Is The We and the I good for a family movie night?,"Verdict: mixed  
+The We and the I has a solid critic score of 70, indicating some appreciation for its artistic approach and character exploration, with critics noting its emotional and social themes [1][4][9]. However, the audience score is significantly lower at 48, suggesting that many viewers found it lacking or unengaging [3]. With a notable critic-audience gap of 22, it seems that while critics may see value in its experimental nature, general audiences may not find it as enjoyable. Given these mixed reactions, it may not be the best choice for a family movie night, especially if you're looking for something universally appealing.",mixed,0.9,False,False,,,,
+gap-0-agree,gpt-4o-mini,rag,Do critics and audiences agree on Saw II?,"Verdict: mixed
+
+Critics generally view ""Saw II"" unfavorably, with a Tomatometer score of 37 based on 122 ratings, indicating a majority of negative reviews. However, the audience score is more favorable at 59 from over 32 million ratings, suggesting that viewers found it more enjoyable than critics did. The critic minus audience gap is -22, highlighting this disagreement. With critics noting improvements over the first film but still criticizing its execution, and audiences seemingly enjoying the film more, it's clear that opinions are divided.",mixed,1.0,False,False,,,,
+repeated-4-family,gpt-4o-mini,rag,Is Love Affair good for a family movie night?,"Verdict: mixed  
+While ""Love Affair"" has a strong critic score of 86% from 7 ratings, indicating that critics generally appreciate it, the audience score of 71% from 1666 ratings suggests a more lukewarm reception among viewers. Critics praise its direction and performances, calling it a superior version of ""An Affair to Remember"" [1][5], but some find the emotional climax underwhelming [3][4]. Given the mixed reception, it may not be the best choice for a family movie night, especially if the audience prefers more universally appealing films.",mixed,0.9,False,False,,,,
+popular-2-spoiler,gemini-3.5-flash-lite,no_rag,What happens at the end of American Gangster?,"Verdict: worth it
+
+This is a guess from the title alone, with no reviews in front of you. 
+
+Since you specifically asked what happens at the end, and knowing that I must not reveal plot points, twists, or endings unless explicitly asked, I can tell you that as an assistant relying solely on the title and year—and having no plot details or reviews in front of me—I cannot actually tell you what happens at the end of the movie.",worth it,0.0,False,False,,,,
+post-2020-1-verdict,gpt-4o-mini,rag,Is Top Gun: Maverick (2022) worth watching?,"Verdict: mixed
+
+Top Gun: Maverick has garnered a strong audience score of 82 from over 11,900 ratings, indicating that many viewers found it enjoyable. Positive reviews highlight improvements over the original, such as better acting, emotional depth, and impressive aerial sequences [2][4][11]. However, some critics express disappointment, citing a lack of narrative depth and innovation, describing it as technically brilliant but emotionally hollow [7][8]. With a significant divide in opinions, the film may appeal to fans of action and nostalgia, but those seeking a deeper story might find it lacking.",mixed,0.9,False,False,,,,
+obscure-6-verdict,gpt-4o-mini,rag,Is Honor Flight (2012) worth watching?,"Verdict: worth it
+
+""Honor Flight"" has a solid Tomatometer score of 80 from 5 critics, indicating generally favorable reviews. The audience score is even higher at 93, suggesting that viewers found it particularly impactful. Critics describe it as a moving documentary that serves as a tribute to World War II veterans, although some express concerns about its depth and execution. Overall, the positive audience reception and the emotional intensity highlighted by critics suggest that it is worth watching, especially for those interested in historical documentaries.",worth it,0.9,False,False,,,,
+gap-5-spoiler,gemini-3.5-flash-lite,rag,What happens at the end of Because I Said So?,"Verdict: skip
+
+I will not spoil the ending of the film. However, based on the provided data, this movie is not worth watching. Critics overwhelmingly reject it, giving it a very low Tomatometer score of 4 out of 158 ratings, with reviews describing it as a ""poorly directed mess"" [7], ""exhausting"" [6], and not very funny [5]. Meanwhile, the audience score is 65 based on 507,136 ratings, showing a sharp -61 gap between critics and audiences. Because there are only 12 reviews provided in the text (despite the stated total of 157 critic blurbs), the available review evidence in front of us is thin, but the critics who weighed in are universally negative.",skip,0.8,False,False,,,,
+popular-1-verdict,gemini-3.5-flash-lite,no_rag,Is The Campaign (2012) worth watching?,"Verdict: worth it
+
+This is a guess from the title alone, with no reviews in front of you.",worth it,0.0,False,False,,,,
